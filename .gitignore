@@ -1,0 +1,36 @@
+# --- data: never commit EEG recordings ---
+# The HUSM dataset is redistributable only under its own figshare terms.
+# Keep it out of git entirely; point the code at it with --data.
+data/
+*.edf
+*.bdf
+*.set
+*.fdt
+*.mat
+
+# --- experiment outputs ---
+results/*.json
+results/*.csv
+results/*.png
+results/*.pdf
+!results/.gitkeep
+runs/
+checkpoints/
+*.pt
+*.pth
+
+# --- python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# --- editors / os ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
