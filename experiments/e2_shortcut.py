@@ -170,10 +170,10 @@ def probe_band_matrix(recs, bands=None, epoch_sec=15.0, model="artifact_lr",
 # P4 -- channel topography
 # --------------------------------------------------------------------------
 
-# 10-20 order as commonly exported by the HUSM recordings. VERIFY against your
-# own download before quoting channel names in the paper.
-DEFAULT_CH = ["Fp1", "F3", "C3", "P3", "O1", "F7", "T3", "T5", "Fz", "Cz",
-              "Pz", "Fp2", "F4", "C4", "P4", "O2", "F8", "T4", "T6"]
+# Channel names now come from the data itself (EpochSet.ch_names), set by
+# eegmdd.data.select_scalp_channels. Never hardcode the order -- the HUSM files
+# ship two different channel layouts (22ch and 20ch) and position-based
+# indexing would silently compare different electrodes across files.
 MUSCLE_PRONE = {"T3", "T4", "T5", "T6", "F7", "F8"}
 
 
@@ -186,7 +186,9 @@ def probe_topography(recs, band="gamma", epoch_sec=15.0, ch_names=None):
     from sklearn.metrics import roc_auc_score
     cfg = Config(band=band, epoch_sec=epoch_sec, overlap_sec=0.0)
     es = build_epochs(recs, cfg)
-    names = ch_names or DEFAULT_CH[:es.X.shape[1]]
+    names = ch_names or es.ch_names or [f"ch{i}" for i in range(es.X.shape[1])]
+    if len(names) != es.X.shape[1]:
+        raise ValueError(f"{len(names)} channel names for {es.X.shape[1]} channels")
 
     from scipy.signal import welch
     f, p = welch(es.X, fs=cfg.fs, nperseg=min(512, es.X.shape[-1]), axis=-1)

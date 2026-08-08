@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import glob
 import os
+import re
+from collections import Counter
 from dataclasses import dataclass
 
 import numpy as np
@@ -22,8 +24,9 @@ class Recording:
     """One continuous recording from one subject."""
     subject: str
     label: int          # 1 = MDD, 0 = HC
-    condition: str      # 'EC' | 'EO'
+    condition: str      # 'EC' | 'EO' | 'TASK'
     data: np.ndarray    # (n_channels, n_samples)
+    ch_names: list | None = None
 
 
 @dataclass
@@ -32,6 +35,7 @@ class EpochSet:
     y: np.ndarray        # (n_epochs,)
     subject: np.ndarray  # (n_epochs,) subject id per epoch -- drives grouping
     condition: np.ndarray
+    ch_names: list | None = None
 
     def __len__(self):
         return len(self.y)
@@ -78,7 +82,8 @@ def build_epochs(recs: list[Recording], cfg: Config) -> EpochSet:
         if cfg.apply_notch:
             sig = notch(sig, cfg.notch_hz, cfg.fs)
         sig = bandpass(sig, lo, hi, cfg.fs)
-        chunks = epoch_recording(Recording(rec.subject, rec.label, rec.condition, sig), cfg)
+        chunks = epoch_recording(
+            Recording(rec.subject, rec.label, rec.condition, sig, rec.ch_names), cfg)
         if chunks is None or len(chunks) == 0:
             continue
         Xs.append(chunks)
@@ -90,6 +95,7 @@ def build_epochs(recs: list[Recording], cfg: Config) -> EpochSet:
         y=np.concatenate(ys).astype(np.int64),
         subject=np.concatenate(subs),
         condition=np.concatenate(conds),
+        ch_names=(recs[0].ch_names if recs and recs[0].ch_names else list(CANONICAL_19)),
     )
 
 
@@ -120,35 +126,188 @@ def normalise(es: EpochSet, cfg: Config, train_idx: np.ndarray | None = None):
         X = (X - mu) / sd
     else:
         raise ValueError(cfg.norm_scope)
-    return EpochSet(X, es.y, es.subject, es.condition)
+    return EpochSet(X, es.y, es.subject, es.condition, es.ch_names)
 
 
 # --- real data ---------------------------------------------------------------
 
-def load_husm(root: str, fs: int = 256) -> list[Recording]:
+# The 19 scalp electrodes of the 10-20 system, in the order the HUSM files
+# store them. The released .edf files ALSO contain non-scalp channels that must
+# NOT be fed to the model:
+#   'EEG A2-A1'      -- the linked-ear reference itself
+#   'EEG 23A-23R'    -- auxiliary bipolar pair
+#   'EEG 24A-24R'    -- auxiliary bipolar pair
+# Files carry either 22 channels (19 + A2A1 + 23A + 24A) or 20 (19 + A2A1).
+# Selecting by POSITION would therefore mix different signals across files;
+# selecting by NAME is the only safe option.
+CANONICAL_19 = ["Fp1", "F3", "C3", "P3", "O1", "F7", "T3", "T5", "Fz",
+                "Fp2", "F4", "C4", "P4", "O2", "F8", "T4", "T6", "Cz", "Pz"]
+
+NON_SCALP_HINTS = ("A2-A1", "23A", "24A", "EOG", "ECG", "EMG", "STATUS")
+
+
+def canonical_channel(raw_name: str) -> str:
+    """'EEG Fp1-LE' -> 'Fp1'.  Robust to 'EEG '/'-LE'/'-REF' decoration."""
+    n = raw_name.strip()
+    if n.upper().startswith("EEG "):
+        n = n[4:]
+    for suffix in ("-LE", "-REF", "-A1", "-A2", "-AVG"):
+        if n.upper().endswith(suffix):
+            n = n[: -len(suffix)]
+            break
+    return n.strip()
+
+
+def select_scalp_channels(ch_names: list[str]) -> tuple[list[int], list[str]]:
+    """Return (indices, names) for the 19 scalp electrodes, in CANONICAL_19 order.
+
+    Raises if any of the 19 is missing -- silently dropping an electrode would
+    change the topography analysis without changing any accuracy number.
+    """
+    lookup = {}
+    for i, raw in enumerate(ch_names):
+        c = canonical_channel(raw)
+        lookup.setdefault(c.upper(), i)
+
+    idx, missing = [], []
+    for want in CANONICAL_19:
+        j = lookup.get(want.upper())
+        if j is None:
+            missing.append(want)
+        else:
+            idx.append(j)
+    if missing:
+        raise ValueError(f"missing scalp channels {missing} in {ch_names}")
+    return idx, list(CANONICAL_19)
+
+
+def parse_filename(name: str) -> dict:
+    """Parse an HUSM filename into subject / label / condition.
+
+    The released files look like:  "MDD S12 EC.edf", "H S3 EO.edf",
+    and often "MDD S5 TASK.edf" as well.
+
+    Two traps this avoids:
+      * "H" appears inside "HEALTHY" but ALSO inside nothing else -- we key on
+        MDD first, so anything not marked MDD is treated as control.
+      * TASK files are NOT eyes-open. A naive `"EC" in name else "EO"` test
+        silently mislabels every TASK recording as eyes-open, quietly polluting
+        the resting-state analysis. We detect TASK explicitly.
+    """
+    upper = os.path.basename(name).upper()
+    label = 1 if "MDD" in upper else 0
+
+    if "TASK" in upper:
+        cond = "TASK"
+    elif re.search(r"\bEC\b|_EC|EC\.", upper) or " EC" in upper:
+        cond = "EC"
+    elif re.search(r"\bEO\b|_EO|EO\.", upper) or " EO" in upper:
+        cond = "EO"
+    else:
+        cond = "UNKNOWN"
+
+    m = re.search(r"S\s*(\d+)", upper)
+    if m:
+        subject = f"{'MDD' if label else 'HC'}_{int(m.group(1)):03d}"
+    else:
+        digits = re.findall(r"\d+", upper)
+        subject = f"{'MDD' if label else 'HC'}_{int(digits[0]):03d}" if digits else None
+
+    return dict(subject=subject, label=label, condition=cond)
+
+
+def load_husm(root: str, fs: int = 256, include_task: bool = False,
+              verbose: bool = True, require_both_conditions: bool = False,
+              on_duplicate: str = "first") -> list[Recording]:
     """Load the Mumtaz/HUSM MDD dataset (.edf files).
 
-    Expected filenames contain 'MDD'/'H' and 'EC'/'EO', e.g.
-        MDD S12 EC.edf, H S03 EO.edf
-    Adjust the parser to whatever the download actually gives you -- verify
-    channel order and count (should be 19 EEG channels) before trusting it.
+    Run experiments/inspect_data.py FIRST to verify the parser against your
+    actual download. Silently mislabelled files are the single easiest way to
+    produce a confidently wrong paper.
     """
     import mne  # lazy: only needed for real data
 
-    recs = []
-    for path in sorted(glob.glob(os.path.join(root, "*.edf"))):
-        name = os.path.basename(path)
-        upper = name.upper()
-        label = 1 if "MDD" in upper else 0
-        cond = "EC" if "EC" in upper else "EO"
-        subject = f"{'MDD' if label else 'HC'}_{''.join(c for c in name if c.isdigit())}"
-        raw = mne.io.read_raw_edf(path, preload=True, verbose="ERROR")
-        raw.pick("eeg")
-        if int(raw.info["sfreq"]) != fs:
-            raw.resample(fs, verbose="ERROR")
-        recs.append(Recording(subject, label, cond, raw.get_data()))
-    if not recs:
+    paths = sorted(glob.glob(os.path.join(root, "**", "*.edf"), recursive=True))
+    if not paths:
         raise FileNotFoundError(f"no .edf files under {root}")
+
+    # --- pass 1: parse names, detect duplicates -------------------------
+    # The figshare release ships TWO copies of H S15 EO, prefixed with
+    # different figshare ids ("6921143_H S15 EO.edf", "6921959_H S15 EO.edf").
+    # Loading both would double-weight that subject's eyes-open data.
+    seen: dict[tuple, str] = {}
+    duplicates: list[tuple[str, str]] = []
+    keep: list[tuple[str, dict]] = []
+    for path in paths:
+        meta = parse_filename(os.path.basename(path))
+        if meta["subject"] is None or meta["condition"] == "UNKNOWN":
+            continue
+        key = (meta["subject"], meta["condition"])
+        if key in seen:
+            duplicates.append((path, seen[key]))
+            if on_duplicate == "first":
+                continue
+            raise ValueError(f"duplicate recording for {key}: {path} vs {seen[key]}")
+        seen[key] = path
+        keep.append((path, meta))
+
+    dup_paths = {p for p, _ in duplicates}
+
+    recs, skipped = [], []
+    for path in paths:
+        if path in dup_paths:
+            skipped.append((path, "duplicate of an earlier file"))
+            continue
+        meta = parse_filename(os.path.basename(path))
+        if meta["subject"] is None:
+            skipped.append((path, "unparsed subject id"))
+            continue
+        if meta["condition"] == "TASK" and not include_task:
+            skipped.append((path, "TASK recording"))
+            continue
+        if meta["condition"] == "UNKNOWN":
+            skipped.append((path, "unknown condition"))
+            continue
+
+        raw = mne.io.read_raw_edf(path, preload=True, verbose="ERROR")
+        if abs(float(raw.info["sfreq"]) - fs) > 0.5:
+            raw.resample(fs, verbose="ERROR")
+        idx, names = select_scalp_channels(raw.ch_names)
+        recs.append(Recording(meta["subject"], meta["label"],
+                              meta["condition"], raw.get_data()[idx], names))
+
+    # --- condition availability ----------------------------------------
+    avail: dict[str, set] = {}
+    for r in recs:
+        avail.setdefault(r.subject, set()).add(r.condition)
+    incomplete = {s: sorted(c) for s, c in avail.items()
+                  if not {"EC", "EO"} <= c}
+    if require_both_conditions and incomplete:
+        recs = [r for r in recs if r.subject not in incomplete]
+
+    if verbose:
+        n_ch = {r.data.shape[0] for r in recs}
+        subs = {r.subject for r in recs}
+        n_mdd = len({s for s in subs if s.startswith("MDD")})
+        n_hc = len(subs) - n_mdd
+        print(f"[load_husm] {len(recs)} recordings, {len(subs)} subjects "
+              f"(MDD={n_mdd}, HC={n_hc}), channels={sorted(n_ch)}")
+        if duplicates:
+            print(f"[load_husm] {len(duplicates)} duplicate file(s) dropped:")
+            for d, orig in duplicates:
+                print(f"    {os.path.basename(d)}  (kept {os.path.basename(orig)})")
+        if incomplete:
+            verb = "EXCLUDED" if require_both_conditions else "kept"
+            print(f"[load_husm] {len(incomplete)} subject(s) lack both EC and EO "
+                  f"({verb}): {incomplete}")
+        if len(n_ch) > 1:
+            raise ValueError(f"inconsistent channel counts {sorted(n_ch)} -- "
+                             "run experiments/inspect_data.py and fix before proceeding")
+        if skipped:
+            print(f"[load_husm] skipped {len(skipped)} file(s): "
+                  f"{Counter(r for _, r in skipped)}")
+    if not recs:
+        raise RuntimeError("every file was skipped -- check parse_filename against your data")
     return recs
 
 
@@ -221,5 +380,6 @@ def make_synthetic(n_mdd=34, n_hc=30, minutes=5.0, cfg: Config | None = None,
             emg = amp * np.sin(2 * np.pi * f0 * t + phase)
             emg *= (1 + 0.3 * rng.standard_normal((n_ch, 1)))
 
-            recs.append(Recording(sid, label, cond, bg + alpha + emg))
+            recs.append(Recording(sid, label, cond, bg + alpha + emg,
+                                  list(CANONICAL_19)[:n_ch]))
     return recs
