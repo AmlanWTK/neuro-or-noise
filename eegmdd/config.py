@@ -18,6 +18,17 @@ BANDS = {
     "gamma_low": (30.0, 45.0),
     # Control arm: everything below the line-noise notch.
     "sub45": (0.5, 45.0),
+
+    # --- bands added after E2d ------------------------------------------
+    # The EDF headers say the recordings are low-passed at 80 Hz, so the
+    # paper's nominal 30-100 Hz "gamma" includes 20 Hz of empty stopband.
+    "gamma_usable": (30.0, 80.0),    # gamma, clipped to what was recorded
+    # Above the mains region and below the low-pass: if a real neural gamma
+    # effect exists, it has to live here.
+    "gamma_noline": (55.0, 80.0),
+    # The mains region on its own. If this alone matches full-gamma accuracy,
+    # the "gamma biomarker" is residual 50 Hz.
+    "line_only": (45.0, 55.0),
 }
 
 SplitKind = Literal["epoch_random", "subject_kfold", "loso"]

@@ -1,0 +1,50 @@
+[runlog] results\runs\20260809-103927_e2c
+[load_husm] 119 recordings, 63 subjects (MDD=33, HC=30), channels=[19]
+[load_husm] 1 duplicate file(s) dropped:
+    6921959_H S15 EO.edf  (kept 6921143_H S15 EO.edf)
+[load_husm] 7 subject(s) lack both EC and EO (kept): {'HC_012': ['EO'], 'HC_018': ['EO'], 'HC_025': ['EC'], 'MDD_012': ['EO'], 'MDD_016': ['EO'], 'MDD_004': ['EO'], 'MDD_007': ['EC']}
+[load_husm] skipped 62 file(s): Counter({'TASK recording': 61, 'duplicate of an earlier file': 1})
+
+[C1/C3] per-subject feature separation (subject is the unit)
+  63 subjects  (MDD=33, HC=30)
+
+  feature                  dir    AUC   log d         p   MDD q1|med|q3            HC q1|med|q3
+  hf_power_60_100       MDD>HC  0.762    0.80  3.74e-04   1.95e-04|2.90e-04|3.36e-04  7.97e-05|1.53e-04|2.31e-04
+  line_resid_45_55      HC>MDD  0.876   -2.24  3.18e-07   1.52e-03|1.80e-03|2.45e-03  6.45e-02|7.65e-02|1.39e-01
+  kurtosis              MDD>HC  0.773    0.69  2.08e-04   1.72e+00|3.40e+00|7.48e+00  2.51e-01|5.70e-01|3.06e+00
+  zero_cross_rate       HC>MDD  0.918   -2.25  1.26e-08   2.55e-01|2.57e-01|2.58e-01  2.97e-01|3.01e-01|3.13e-01
+  rms                   HC>MDD  0.667   -0.57  2.36e-02   9.22e-07|1.24e-06|1.83e-06  1.27e-06|1.74e-06|2.85e-06
+
+  |log d| > 0.8 is a large effect. AUC is rank-based so it is robust
+  to the heavy tails; the quartiles show whether the gap is a whole-
+  population shift or a tail effect.
+
+[C2] does it hold within each recording condition?
+  EC: n=58 subjects  line-resid AUC=0.887   hf-power AUC=0.799
+  EO: n=61 subjects  line-resid AUC=0.889   hf-power AUC=0.762
+
+[C4/C5] is the line noise in the recordings, or in our filtering?
+  n=63 subjects, per-subject median over recordings
+
+  50 Hz peak-to-neighbour, RAW (no notch, no bandpass):
+    MDD  q1/med/q3 = 0.16 / 1.50 / 48.70   48% with a clear 50 Hz peak
+    HC   q1/med/q3 = 0.07 / 7.23 / 24.56   60% with a clear 50 Hz peak
+    AUC 0.568 (MDD>HC)   log-d +0.04   p=3.60e-01
+
+  after our 50 Hz notch:
+    MDD  q1/med/q3 = 0.04 / 0.04 / 0.05   0% with a clear 50 Hz peak
+    HC   q1/med/q3 = 0.02 / 0.03 / 0.07   0% with a clear 50 Hz peak
+    AUC 0.645 (MDD>HC)   log-d +0.07   p=4.83e-02
+
+  A high RAW AUC means the line-noise difference is a property of the
+  recordings. A low RAW but high post-notch AUC would mean WE created it.
+
+[C6] batch / recording-order trend within each group
+  MDD  line_resid_45_55     rho=+0.048  p=0.7895
+  MDD  hf_power_60_100      rho=+0.105  p=0.5604
+  HC   line_resid_45_55     rho=-0.254  p=0.1754
+  HC   hf_power_60_100      rho=+0.141  p=0.4586
+
+[runlog] 105.3s  commit 1faf161  [UNCOMMITTED CHANGES]
+[runlog] saved -> results\runs\20260809-103927_e2c
+[runlog] WARNING: working tree is dirty, so this run is not reproducible from a commit. Commit before the next run.

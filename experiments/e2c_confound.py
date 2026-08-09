@@ -38,8 +38,27 @@ from eegmdd.data import build_epochs, load_husm, make_synthetic, notch
 
 
 def _auc(y, x):
+    """Return (raw_auc, |auc|, direction). Direction matters: reporting only
+    max(auc, 1-auc) hides WHICH group is higher, which is the whole point."""
     a = roc_auc_score(y, x)
-    return a, max(a, 1 - a)
+    return a, max(a, 1 - a), ("MDD>HC" if a > 0.5 else "HC>MDD")
+
+
+def _log_cohen_d(a, b, eps=1e-12):
+    """Effect size, on a log scale when the feature is strictly positive.
+
+    Power-like features are heavy-tailed, so a raw-scale d understates them.
+    But kurtosis can be negative, so fall back to raw scale rather than
+    returning NaN.
+    """
+    a, b = np.asarray(a, float), np.asarray(b, float)
+    if a.min() > 0 and b.min() > 0:
+        la, lb = np.log10(a + eps), np.log10(b + eps)
+    else:
+        la, lb = a, b
+    sp = np.sqrt(((len(la) - 1) * la.var(ddof=1) + (len(lb) - 1) * lb.var(ddof=1))
+                 / max(1, len(la) + len(lb) - 2))
+    return float((la.mean() - lb.mean()) / (sp + 1e-12))
 
 
 # --- C1 / C3 -----------------------------------------------------------------
@@ -58,26 +77,39 @@ def per_subject_table(es, fs):
 
 
 def c1_c3(rows):
+    """Per-subject separation, reported honestly for heavy-tailed data.
+
+    The previous version reported 'fraction of MDD inside the HC 5-95 band',
+    which is useless when HC has a long tail: nearly everything falls inside a
+    wide band even under perfect rank separation. Replaced with quartiles, a
+    log-scale effect size, and an explicit direction.
+    """
+    from scipy.stats import mannwhitneyu
     y = np.array([r["label"] for r in rows])
     print(f"  {len(rows)} subjects  (MDD={int(y.sum())}, HC={int((1-y).sum())})")
-    print(f"\n  {'feature':<20}{'MDD med':>12}{'HC med':>12}{'ratio':>9}"
-          f"{'subj AUC':>10}{'overlap':>9}")
+    print(f"\n  {'feature':<20}{'dir':>8}{'AUC':>7}{'log d':>8}{'p':>10}"
+          f"   MDD q1|med|q3            HC q1|med|q3")
     out = []
     for name in FEATURE_NAMES:
         x = np.array([r[name] for r in rows])
         mdd, hc = x[y == 1], x[y == 0]
-        a, aabs = _auc(y, x)
-        # overlap = fraction of subjects inside the other group's 5-95 range
-        lo, hi = np.percentile(hc, [5, 95])
-        ov = float(((mdd >= lo) & (mdd <= hi)).mean())
-        ratio = (np.median(mdd) + 1e-12) / (np.median(hc) + 1e-12)
-        print(f"  {name:<20}{np.median(mdd):>12.5f}{np.median(hc):>12.5f}"
-              f"{ratio:>9.2f}{aabs:>10.3f}{ov:>9.2f}")
-        out.append(dict(feature=name, mdd_median=float(np.median(mdd)),
-                        hc_median=float(np.median(hc)), ratio=float(ratio),
-                        subject_auc=float(aabs), overlap_frac=ov))
-    print("\n  overlap = fraction of MDD subjects inside the HC 5-95 percentile band.")
-    print("  Low overlap + high AUC = a clean population separation, not outliers.")
+        a, aabs, direction = _auc(y, x)
+        d = _log_cohen_d(mdd, hc)
+        try:
+            pval = float(mannwhitneyu(mdd, hc, alternative="two-sided").pvalue)
+        except Exception:
+            pval = float("nan")
+        mq = np.percentile(mdd, [25, 50, 75])
+        hq = np.percentile(hc, [25, 50, 75])
+        print(f"  {name:<20}{direction:>8}{aabs:>7.3f}{d:>8.2f}{pval:>10.2e}"
+              f"   {mq[0]:.2e}|{mq[1]:.2e}|{mq[2]:.2e}"
+              f"  {hq[0]:.2e}|{hq[1]:.2e}|{hq[2]:.2e}")
+        out.append(dict(feature=name, direction=direction, subject_auc=float(aabs),
+                        log_cohen_d=d, p_mannwhitney=pval,
+                        mdd_q=[float(v) for v in mq], hc_q=[float(v) for v in hq]))
+    print("\n  |log d| > 0.8 is a large effect. AUC is rank-based so it is robust")
+    print("  to the heavy tails; the quartiles show whether the gap is a whole-")
+    print("  population shift or a tail effect.")
     return out
 
 
@@ -105,7 +137,7 @@ def c4_c5_notch(recs, epoch_sec, fs=256):
 
     If the group difference exists here, it is in the recordings, not in our code.
     """
-    y, peak_raw, peak_notched = [], [], []
+    per_subject = {}
     for rec in recs:
         if rec.condition not in ("EC", "EO"):
             continue
@@ -122,22 +154,49 @@ def c4_c5_notch(recs, epoch_sec, fs=256):
         n2 = ((f2 >= 40) & (f2 < 48)) | ((f2 > 52) & (f2 <= 60))
         ratio_n = (p2[..., b2].mean(-1) / (p2[..., n2].mean(-1) + 1e-20)).mean()
 
-        y.append(rec.label)
-        peak_raw.append(float(ratio))
-        peak_notched.append(float(ratio_n))
+        d = per_subject.setdefault(rec.subject, dict(label=rec.label, raw=[], notched=[]))
+        d["raw"].append(float(ratio))
+        d["notched"].append(float(ratio_n))
 
-    y = np.array(y)
-    pr, pn = np.array(peak_raw), np.array(peak_notched)
-    print(f"  50 Hz peak-to-neighbour ratio, RAW (no notch, no bandpass):")
-    print(f"    MDD median {np.median(pr[y==1]):.2f}   HC median {np.median(pr[y==0]):.2f}"
-          f"   AUC {_auc(y, pr)[1]:.3f}")
-    print(f"  after our 50 Hz notch:")
-    print(f"    MDD median {np.median(pn[y==1]):.2f}   HC median {np.median(pn[y==0]):.2f}"
-          f"   AUC {_auc(y, pn)[1]:.3f}")
-    print("\n  If the RAW AUC is already high, the line-noise difference is a property")
-    print("  of the recordings themselves -- our preprocessing did not create it.")
-    return dict(raw_auc=float(_auc(y, pr)[1]), notched_auc=float(_auc(y, pn)[1]),
-                raw_mdd=float(np.median(pr[y == 1])), raw_hc=float(np.median(pr[y == 0])))
+    # Aggregate to SUBJECT level. Per-recording values are extremely heavy-tailed
+    # (a single noisy channel-minute can dominate), which is why the earlier
+    # per-recording AUC sat near chance despite a 6x median gap.
+    subs = sorted(per_subject)
+    y = np.array([per_subject[s]["label"] for s in subs])
+    pr = np.array([np.median(per_subject[s]["raw"]) for s in subs])
+    pn = np.array([np.median(per_subject[s]["notched"]) for s in subs])
+
+    from scipy.stats import mannwhitneyu
+
+    def report(tag, v):
+        a, aabs, direction = _auc(y, v)
+        p = float(mannwhitneyu(v[y == 1], v[y == 0], alternative="two-sided").pvalue)
+        mq = np.percentile(v[y == 1], [25, 50, 75])
+        hq = np.percentile(v[y == 0], [25, 50, 75])
+        # "clear line peak" = 50 Hz bin at least 2x its neighbours
+        fm = float((v[y == 1] >= 2).mean())
+        fh = float((v[y == 0] >= 2).mean())
+        print(f"  {tag}")
+        print(f"    MDD  q1/med/q3 = {mq[0]:.2f} / {mq[1]:.2f} / {mq[2]:.2f}"
+              f"   {fm:.0%} with a clear 50 Hz peak")
+        print(f"    HC   q1/med/q3 = {hq[0]:.2f} / {hq[1]:.2f} / {hq[2]:.2f}"
+              f"   {fh:.0%} with a clear 50 Hz peak")
+        print(f"    AUC {aabs:.3f} ({direction})   log-d {_log_cohen_d(v[y==1], v[y==0]):+.2f}"
+              f"   p={p:.2e}")
+        return dict(auc=float(aabs), direction=direction, p=p,
+                    mdd_median=float(mq[1]), hc_median=float(hq[1]),
+                    mdd_frac_peak=fm, hc_frac_peak=fh)
+
+    print(f"  n={len(subs)} subjects, per-subject median over recordings\n")
+    raw = report("50 Hz peak-to-neighbour, RAW (no notch, no bandpass):", pr)
+    print()
+    notched = report("after our 50 Hz notch:", pn)
+    print("\n  A high RAW AUC means the line-noise difference is a property of the")
+    print("  recordings. A low RAW but high post-notch AUC would mean WE created it.")
+    return dict(raw=raw, notched=notched,
+                per_subject={s: dict(label=per_subject[s]["label"],
+                                     raw_median=float(np.median(per_subject[s]["raw"])))
+                             for s in subs})
 
 
 # --- C6 ----------------------------------------------------------------------

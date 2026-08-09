@@ -256,6 +256,11 @@ def _main(run):
     ap.add_argument("--band", default="gamma")
     ap.add_argument("--probes", default="P1,P2,P3,P4")
     ap.add_argument("--n-folds", type=int, default=10)
+    ap.add_argument("--bands", default=None,
+                    help="comma-separated band names for P3 (see config.BANDS)")
+    ap.add_argument("--p3-model", default="artifact_lr",
+                    choices=["artifact_lr", "ex1dcnn"],
+                    help="artifact_lr is fast; ex1dcnn is the paper's model")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--shortcut-mode", default="class_correlated",
                     choices=["class_correlated", "subject_only"])
@@ -285,8 +290,10 @@ def _main(run):
 
     if "P3" in want:
         print("\n[P3] band x protocol matrix")
-        results["P3"] = probe_band_matrix(recs, epoch_sec=args.epoch_sec,
-                                          seed=args.seed, n_folds=args.n_folds)
+        results["P3"] = probe_band_matrix(
+            recs, bands=(args.bands.split(",") if args.bands else None),
+            epoch_sec=args.epoch_sec, model=args.p3_model,
+            seed=args.seed, n_folds=args.n_folds)
 
     if "P4" in want:
         print("\n[P4] channel topography")

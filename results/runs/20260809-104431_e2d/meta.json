@@ -1,0 +1,23 @@
+{
+  "name": "e2d",
+  "started": "2026-08-09T10:44:31",
+  "duration_s": 19.5,
+  "argv": [
+    "experiments/e2d_spectrum.py",
+    "--data",
+    "D:\\Project\\PaperPlan\\EEG"
+  ],
+  "args": {},
+  "git_commit": "1faf161",
+  "git_dirty": true,
+  "versions": {
+    "python": "3.14.4",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "numpy": "2.4.3",
+    "scipy": "1.17.1",
+    "sklearn": "1.9.0",
+    "torch": "2.11.0+cpu",
+    "mne": "1.12.1"
+  },
+  "status": "ok"
+}

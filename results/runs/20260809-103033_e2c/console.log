@@ -1,0 +1,42 @@
+[runlog] results\runs\20260809-103033_e2c
+[load_husm] 119 recordings, 63 subjects (MDD=33, HC=30), channels=[19]
+[load_husm] 1 duplicate file(s) dropped:
+    6921959_H S15 EO.edf  (kept 6921143_H S15 EO.edf)
+[load_husm] 7 subject(s) lack both EC and EO (kept): {'HC_012': ['EO'], 'HC_018': ['EO'], 'HC_025': ['EC'], 'MDD_012': ['EO'], 'MDD_016': ['EO'], 'MDD_004': ['EO'], 'MDD_007': ['EC']}
+[load_husm] skipped 62 file(s): Counter({'TASK recording': 61, 'duplicate of an earlier file': 1})
+
+[C1/C3] per-subject feature separation (subject is the unit)
+  63 subjects  (MDD=33, HC=30)
+
+  feature                  MDD med      HC med    ratio  subj AUC  overlap
+  hf_power_60_100          0.00029     0.00015     1.89     0.762     0.88
+  line_resid_45_55         0.00180     0.07654     0.02     0.876     0.79
+  kurtosis                 3.40078     0.57000     5.97     0.773     0.73
+  zero_cross_rate          0.25696     0.30086     0.85     0.918     0.55
+  rms                      0.00000     0.00000     0.71     0.667     0.94
+
+  overlap = fraction of MDD subjects inside the HC 5-95 percentile band.
+  Low overlap + high AUC = a clean population separation, not outliers.
+
+[C2] does it hold within each recording condition?
+  EC: n=58 subjects  line-resid AUC=0.887   hf-power AUC=0.799
+  EO: n=61 subjects  line-resid AUC=0.889   hf-power AUC=0.762
+
+[C4/C5] is the line noise in the recordings, or in our filtering?
+  50 Hz peak-to-neighbour ratio, RAW (no notch, no bandpass):
+    MDD median 1.33   HC median 8.16   AUC 0.543
+  after our 50 Hz notch:
+    MDD median 0.04   HC median 0.03   AUC 0.649
+
+  If the RAW AUC is already high, the line-noise difference is a property
+  of the recordings themselves -- our preprocessing did not create it.
+
+[C6] batch / recording-order trend within each group
+  MDD  line_resid_45_55     rho=+0.048  p=0.7895
+  MDD  hf_power_60_100      rho=+0.105  p=0.5604
+  HC   line_resid_45_55     rho=-0.254  p=0.1754
+  HC   hf_power_60_100      rho=+0.141  p=0.4586
+
+[runlog] 102.8s  commit 1faf161  [UNCOMMITTED CHANGES]
+[runlog] saved -> results\runs\20260809-103033_e2c
+[runlog] WARNING: working tree is dirty, so this run is not reproducible from a commit. Commit before the next run.
