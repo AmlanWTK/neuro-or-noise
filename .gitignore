@@ -9,12 +9,21 @@ data/
 *.mat
 
 # --- experiment outputs ---
+# Loose files at the top of results/ are scratch -- ignore them.
 results/*.json
 results/*.csv
 results/*.png
 results/*.pdf
 !results/.gitkeep
-runs/
+
+# BUT results/runs/ is the experimental record and IS committed. Each run dir
+# holds meta.json (command + git commit + versions), console.log and
+# result.json -- a few KB, and the only way to trace a number in the paper back
+# to the code that produced it.
+!results/runs/
+!results/runs/**
+
+# model weights are large and regenerable
 checkpoints/
 *.pt
 *.pth

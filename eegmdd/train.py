@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import numpy as np
 import torch
+from scipy.special import expit
 import torch.nn as nn
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
@@ -92,7 +93,7 @@ def train_one_fold(es: EpochSet, tr, te, cfg: Config, subject_codes=None):
         xb = torch.from_numpy(es_n.X[te]).to(dev)
         out = model(xb, 0.0) if is_dann else model(xb)
         logit = (out[0] if is_dann else out).cpu().numpy()
-    prob = 1.0 / (1.0 + np.exp(-logit))
+    prob = expit(logit)
     return prob, logit
 
 
@@ -130,7 +131,7 @@ def run_cv(es: EpochSet, cfg: Config, verbose=True) -> dict:
 
     if cfg.calibrate:
         T = fit_temperature(all_logit, es.y)
-        pc = 1.0 / (1.0 + np.exp(-all_logit / T))
+        pc = expit(all_logit / T)
         res["temperature"] = T
         res["epoch_calibrated_ece"] = expected_calibration_error(es.y, pc)
 

@@ -7,6 +7,7 @@ roughly +-10 points, which is itself worth saying out loud.
 from __future__ import annotations
 
 import numpy as np
+from scipy.special import expit
 
 
 def binary_metrics(y: np.ndarray, prob: np.ndarray, thr: float = 0.5) -> dict:
@@ -65,7 +66,7 @@ def fit_temperature(logits: np.ndarray, y: np.ndarray, grid=None) -> float:
     grid = grid if grid is not None else np.linspace(0.25, 5.0, 96)
     best, best_nll = 1.0, np.inf
     for T in grid:
-        p = 1.0 / (1.0 + np.exp(-logits / T))
+        p = expit(logits / T)
         p = np.clip(p, 1e-7, 1 - 1e-7)
         nll = -(y * np.log(p) + (1 - y) * np.log(1 - p)).mean()
         if nll < best_nll:

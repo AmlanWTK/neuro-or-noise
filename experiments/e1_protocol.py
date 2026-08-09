@@ -7,6 +7,8 @@ import argparse, json, sys, time
 import numpy as np
 sys.path.insert(0, ".")
 
+from eegmdd.runlog import start_run
+
 from eegmdd.config import Config
 from eegmdd.data import make_synthetic, build_epochs, load_husm
 from eegmdd.train import run_cv
@@ -18,13 +20,15 @@ def get_recordings(args):
     return load_husm(args.data)
 
 
-def main():
+def _main(run):
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default="synthetic", help="'synthetic' or path to .edf dir")
     ap.add_argument("--minutes", type=float, default=1.0)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--epoch-sec", type=float, default=15.0,
+                    help="paper's best config is gamma @ 15 s")
+    ap.add_argument("--n-folds", type=int, default=10, help="paper uses 10")
     ap.add_argument("--epochs", type=int, default=12)
-    ap.add_argument("--out", default="results/e1.json")
     ap.add_argument("--skip-loso", action="store_true", help="LOSO is ~10x slower; skip for smoke tests")
     args = ap.parse_args()
 
@@ -44,8 +48,8 @@ def main():
 
     out = []
     for name, over in arms:
-        cfg = Config(band="gamma", epoch_sec=5.0, max_epochs=args.epochs,
-                     seed=args.seed, n_folds=5, **over)
+        cfg = Config(band="gamma", epoch_sec=args.epoch_sec, max_epochs=args.epochs,
+                     seed=args.seed, n_folds=args.n_folds, **over)
         es = build_epochs(recs, cfg)
         t0 = time.time()
         print(f"\n=== {name}  ({len(es)} epochs, {es.n_subjects} subjects)")
@@ -61,9 +65,12 @@ def main():
         d = out[i]["epoch_acc"] - out[i-1]["epoch_acc"]
         print(f"  {out[i-1]['arm']:24s} -> {out[i]['arm']:24s}  {d:+.4f}")
 
-    with open(args.out, "w") as f:
-        json.dump(out, f, indent=2)
-    print(f"\nwrote {args.out}")
+    run.set_result(dict(arms=out, args=vars(args)))
+
+
+def main():
+    with start_run("e1") as run:
+        _main(run)
 
 
 if __name__ == "__main__":

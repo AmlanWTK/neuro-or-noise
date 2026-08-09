@@ -29,6 +29,8 @@ from sklearn.preprocessing import StandardScaler
 
 sys.path.insert(0, ".")
 
+from eegmdd.runlog import start_run
+
 from eegmdd.artifact import FEATURE_NAMES, featurise, channel_hf_profile
 from eegmdd.config import Config, BANDS
 from eegmdd.data import build_epochs, load_husm, make_synthetic, normalise
@@ -174,7 +176,23 @@ def probe_band_matrix(recs, bands=None, epoch_sec=15.0, model="artifact_lr",
 # eegmdd.data.select_scalp_channels. Never hardcode the order -- the HUSM files
 # ship two different channel layouts (22ch and 20ch) and position-based
 # indexing would silently compare different electrodes across files.
-MUSCLE_PRONE = {"T3", "T4", "T5", "T6", "F7", "F8"}
+# Scalp EMG has distinct topographies depending on which muscle is active:
+#   frontalis  -- Fp1/Fp2/F7/F8      (brow, eye squeezing)
+#   temporalis -- T3/T4/F7/F8        (jaw clenching)
+#   neck       -- O1/O2/T5/T6/P3/P4/Pz  (splenius/trapezius, head support)
+# A posterior-dominant map is a NECK signature, not a jaw one. Reporting it as
+# generic "muscle-prone" would blur a result that is actually quite specific.
+MUSCLE_GROUPS = {
+    "frontalis": {"Fp1", "Fp2", "F7", "F8"},
+    "temporalis": {"T3", "T4", "F7", "F8"},
+    "neck": {"O1", "O2", "T5", "T6", "P3", "P4", "Pz"},
+}
+MUSCLE_PRONE = set().union(*MUSCLE_GROUPS.values())
+
+
+def muscle_label(ch: str) -> str:
+    hits = [g for g, s in MUSCLE_GROUPS.items() if ch in s]
+    return "/".join(hits) if hits else ""
 
 
 def probe_topography(recs, band="gamma", epoch_sec=15.0, ch_names=None):
@@ -200,24 +218,37 @@ def probe_topography(recs, band="gamma", epoch_sec=15.0, ch_names=None):
         auc = float(roc_auc_score(es.y, per_ch[:, i]))
         rows.append(dict(channel=nm, hf_power=float(per_ch[:, i].mean()),
                          auc=auc, auc_abs=max(auc, 1 - auc),
-                         muscle_prone=nm in MUSCLE_PRONE))
+                         muscle_prone=nm in MUSCLE_PRONE,
+                         muscle_group=muscle_label(nm)))
     rows.sort(key=lambda r: -r["auc_abs"])
 
     top6 = rows[:6]
     n_muscle = sum(r["muscle_prone"] for r in top6)
     print("  most discriminative channels (60-100 Hz relative power):")
     for r in top6:
-        flag = "  <-- muscle-prone" if r["muscle_prone"] else ""
+        lab = muscle_label(r["channel"])
+        flag = f"  <-- {lab}" if lab else ""
         print(f"    {r['channel']:4s} AUC={r['auc']:.3f}{flag}")
-    print(f"  {n_muscle}/6 of the top channels are muscle-prone "
-          f"({len(MUSCLE_PRONE)}/{len(names)} of all channels are)")
+    print(f"  {n_muscle}/6 of the top channels sit over a muscle group "
+          f"({len(MUSCLE_PRONE & set(names))}/{len(names)} of all channels do)")
+
+    # which muscle group is over-represented in the top half?
+    half = rows[: max(1, len(rows) // 2)]
+    print("  muscle-group enrichment in the top half of channels:")
+    for g, chans in MUSCLE_GROUPS.items():
+        present = chans & set(names)
+        if not present:
+            continue
+        hit = len([r for r in half if r["channel"] in present])
+        exp = len(present) * len(half) / len(names)
+        print(f"    {g:<11} {hit}/{len(present)} present  (expected {exp:.1f})")
     return dict(channels=rows, top6_muscle_prone=n_muscle,
-                baseline_rate=len(MUSCLE_PRONE) / len(names))
+                baseline_rate=len(MUSCLE_PRONE & set(names)) / len(names))
 
 
 # --------------------------------------------------------------------------
 
-def main():
+def _main(run):
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default="synthetic")
     ap.add_argument("--minutes", type=float, default=1.0)
@@ -228,7 +259,6 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--shortcut-mode", default="class_correlated",
                     choices=["class_correlated", "subject_only"])
-    ap.add_argument("--out", default="results/e2.json")
     args = ap.parse_args()
 
     recs = (make_synthetic(minutes=args.minutes, seed=args.seed,
@@ -262,9 +292,12 @@ def main():
         print("\n[P4] channel topography")
         results["P4"] = probe_topography(recs, args.band, args.epoch_sec)
 
-    with open(args.out, "w") as f:
-        json.dump(results, f, indent=2, default=float)
-    print(f"\nwrote {args.out}")
+    run.set_result(results)
+
+
+def main():
+    with start_run("e2") as run:
+        _main(run)
 
 
 if __name__ == "__main__":
