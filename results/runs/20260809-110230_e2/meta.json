@@ -1,0 +1,27 @@
+{
+  "name": "e2",
+  "started": "2026-08-09T11:02:30",
+  "duration_s": 2493.5,
+  "argv": [
+    "experiments/e2_shortcut.py",
+    "--data",
+    "D:\\Project\\PaperPlan\\EEG",
+    "--probes",
+    "P3",
+    "--bands",
+    "gamma,gamma_usable,gamma_noline,line_only,sub45,delta,beta"
+  ],
+  "args": {},
+  "git_commit": "1a6c2b2",
+  "git_dirty": true,
+  "versions": {
+    "python": "3.14.4",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "numpy": "2.4.3",
+    "scipy": "1.17.1",
+    "sklearn": "1.9.0",
+    "torch": "2.11.0+cpu",
+    "mne": "1.12.1"
+  },
+  "status": "ok"
+}

@@ -1,0 +1,63 @@
+{
+  "data": "D:\\Project\\PaperPlan\\EEG",
+  "band": "gamma",
+  "epoch_sec": 15.0,
+  "P3": [
+    {
+      "band": "gamma",
+      "epoch_random": 0.884138520735357,
+      "epoch_random_subject": 0.873015873015873,
+      "subject_kfold": 0.8837109876015391,
+      "subject_kfold_subject": 0.873015873015873,
+      "gap": 0.00042753313381793667
+    },
+    {
+      "band": "gamma_usable",
+      "epoch_random": 0.8849935870029927,
+      "epoch_random_subject": 0.873015873015873,
+      "subject_kfold": 0.8837109876015391,
+      "subject_kfold_subject": 0.873015873015873,
+      "gap": 0.001282599401453588
+    },
+    {
+      "band": "gamma_noline",
+      "epoch_random": 0.8550662676357418,
+      "epoch_random_subject": 0.873015873015873,
+      "subject_kfold": 0.8512184694313809,
+      "subject_kfold_subject": 0.8571428571428571,
+      "gap": 0.003847798204360875
+    },
+    {
+      "band": "line_only",
+      "epoch_random": 0.870884993587003,
+      "epoch_random_subject": 0.873015873015873,
+      "subject_kfold": 0.8631893971782814,
+      "subject_kfold_subject": 0.873015873015873,
+      "gap": 0.007695596408721639
+    },
+    {
+      "band": "sub45",
+      "epoch_random": 0.8584865327062847,
+      "epoch_random_subject": 0.873015873015873,
+      "subject_kfold": 0.8341171440786661,
+      "subject_kfold_subject": 0.8253968253968254,
+      "gap": 0.024369388627618616
+    },
+    {
+      "band": "delta",
+      "epoch_random": 0.8426678067550235,
+      "epoch_random_subject": 0.8412698412698413,
+      "subject_kfold": 0.8422402736212057,
+      "subject_kfold_subject": 0.8412698412698413,
+      "gap": 0.00042753313381782565
+    },
+    {
+      "band": "beta",
+      "epoch_random": 0.8486532706284737,
+      "epoch_random_subject": 0.873015873015873,
+      "subject_kfold": 0.8140230867892262,
+      "subject_kfold_subject": 0.8571428571428571,
+      "gap": 0.03463018383924754
+    }
+  ]
+}
