@@ -156,6 +156,16 @@ def probe_band_matrix(recs, bands=None, epoch_sec=15.0, model="artifact_lr",
             res = run_cv(es, cfg, verbose=False)
             row[split] = res["epoch"]["accuracy"]
             row[f"{split}_subject"] = res["subject"]["accuracy"]
+            # Persist SUBJECT-LEVEL predictions. Without these, two runs can
+            # only be compared by eyeballing accuracies -- and a 0.05 gap on
+            # 63 subjects is ~3 people, which may well be noise. McNemar needs
+            # the paired per-subject decisions, so save them.
+            from eegmdd.metrics import to_subject_level
+            ys, ps, subs = to_subject_level(es.y, res["_prob"], es.subject)
+            row[f"{split}_pred"] = dict(
+                subjects=[str(x) for x in subs],
+                y=[int(v) for v in ys],
+                prob=[float(v) for v in ps])
         row["gap"] = row["epoch_random"] - row["subject_kfold"]
         rows.append(row)
         print(f"  {band:10s} epoch-random={row['epoch_random']:.4f}  "

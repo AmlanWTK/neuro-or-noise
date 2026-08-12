@@ -1,0 +1,16 @@
+[runlog] results\runs\20260812-183921_e2
+[load_husm] 119 recordings, 63 subjects (MDD=33, HC=30), channels=[19]
+[load_husm] 1 duplicate file(s) dropped:
+    6921959_H S15 EO.edf  (kept 6921143_H S15 EO.edf)
+[load_husm] 7 subject(s) lack both EC and EO (kept): {'HC_012': ['EO'], 'HC_018': ['EO'], 'HC_025': ['EC'], 'MDD_012': ['EO'], 'MDD_016': ['EO'], 'MDD_004': ['EO'], 'MDD_007': ['EC']}
+[load_husm] skipped 62 file(s): Counter({'TASK recording': 61, 'duplicate of an earlier file': 1})
+
+[P3] band x protocol matrix
+  gamma_bs   epoch-random=0.9423  subject-wise=0.8290  gap=+0.1133
+
+  ranking under epoch-random : gamma_bs
+  ranking under subject-wise : gamma_bs
+
+[runlog] 1750.8s  commit 7b4aac4  [UNCOMMITTED CHANGES]
+[runlog] saved -> results\runs\20260812-183921_e2
+[runlog] WARNING: working tree is dirty, so this run is not reproducible from a commit. Commit before the next run.

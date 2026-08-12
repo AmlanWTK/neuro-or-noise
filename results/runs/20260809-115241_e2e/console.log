@@ -1,0 +1,47 @@
+[runlog] results\runs\20260809-115241_e2e
+[load_husm] 119 recordings, 63 subjects (MDD=33, HC=30), channels=[19]
+[load_husm] 1 duplicate file(s) dropped:
+    6921959_H S15 EO.edf  (kept 6921143_H S15 EO.edf)
+[load_husm] 7 subject(s) lack both EC and EO (kept): {'HC_012': ['EO'], 'HC_018': ['EO'], 'HC_025': ['EC'], 'MDD_012': ['EO'], 'MDD_016': ['EO'], 'MDD_004': ['EO'], 'MDD_007': ['EC']}
+[load_husm] skipped 62 file(s): Counter({'TASK recording': 61, 'duplicate of an earlier file': 1})
+
+63 subjects
+
+[A1] aperiodic exponent and offset
+  fitted 2-45 Hz (mains excluded), median R2 = 0.706
+
+  aperiodic exponent         MDD +2.152   HC +1.315   AUC 0.776 (MDD>HC)  p=1.77e-04
+  offset (broadband power)   MDD -9.221   HC -10.236   AUC 0.859 (MDD>HC)  p=1.07e-06
+
+  exponent + offset only, 5-fold subject-level CV: 0.7936 +/- 0.0839
+  (majority class = 0.5238)
+
+[A2] does the exponent explain the artifact features?
+  Spearman correlation with the aperiodic exponent:
+    hf_power_60_100      rho=-0.117  p=3.60e-01
+    line_resid_45_55     rho=-0.688  p=4.81e-10
+
+  Strong correlation means these 'artifact' features are largely
+  re-measurements of one broadband parameter.
+
+[A3] flatten each spectrum by its own 1/f fit
+  band           raw AUC   flattened AUC    change
+  delta            0.769           0.743    -0.025
+  theta            0.542           0.824    +0.282
+  alpha            0.553           0.748    +0.196
+  beta             0.790           0.919    +0.129
+  gamma_low        0.516           0.622    +0.106
+  line             0.717           0.747    +0.030
+  gamma_hi         0.593           0.529    -0.064
+
+  all 7 raw band powers        5-fold CV: 0.8577 +/- 0.0939
+
+  all 7 flattened band powers  5-fold CV: 0.8410 +/- 0.0845
+
+  If flattened AUCs drop to ~0.5, every band difference in this dataset
+  is a consequence of the aperiodic slope, and no band-specific
+  biomarker claim -- gamma or otherwise -- is supportable.
+
+[runlog] 19.4s  commit 7b4aac4  [UNCOMMITTED CHANGES]
+[runlog] saved -> results\runs\20260809-115241_e2e
+[runlog] WARNING: working tree is dirty, so this run is not reproducible from a commit. Commit before the next run.

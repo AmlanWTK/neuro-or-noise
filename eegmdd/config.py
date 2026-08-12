@@ -29,6 +29,13 @@ BANDS = {
     # The mains region on its own. If this alone matches full-gamma accuracy,
     # the "gamma biomarker" is residual 50 Hz.
     "line_only": (45.0, 55.0),
+
+    # --- band-stop variants: (lo, hi, (stop_lo, stop_hi)) ----------------
+    # `gamma_noline` (55-80) removes the mains region but ALSO discards
+    # 30-45 Hz, so a drop there cannot be attributed to mains alone. These
+    # keep the full band and excise only 45-55 Hz -- the clean control.
+    "gamma_bs": (30.0, 100.0, (45.0, 55.0)),
+    "gamma_usable_bs": (30.0, 80.0, (45.0, 55.0)),
 }
 
 SplitKind = Literal["epoch_random", "subject_kfold", "loso"]
@@ -78,7 +85,12 @@ class Config:
     subject_level: bool = True        # aggregate epoch probs -> subject decision
 
     def band_range(self) -> Tuple[float, float]:
-        return BANDS[self.band]
+        return BANDS[self.band][:2]
+
+    def band_stop(self):
+        """(stop_lo, stop_hi) to excise, or None."""
+        spec = BANDS[self.band]
+        return spec[2] if len(spec) > 2 else None
 
     def tag(self) -> str:
         return (f"{self.band}_{self.epoch_sec:g}s_ov{self.overlap_sec:g}"

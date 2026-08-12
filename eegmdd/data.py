@@ -59,6 +59,13 @@ def notch(x: np.ndarray, f0: float, fs: int, q: float = 30.0):
     return filtfilt(b, a, x, axis=-1)
 
 
+def bandstop(x: np.ndarray, lo: float, hi: float, fs: int, order: int = 4):
+    """Excise a frequency range entirely (wider and harder than a notch)."""
+    nyq = fs / 2.0
+    b, a = butter(order, [lo / nyq, min(hi, nyq * 0.99) / nyq], btype="bandstop")
+    return filtfilt(b, a, x, axis=-1)
+
+
 # --- epoching ----------------------------------------------------------------
 
 def epoch_recording(rec: Recording, cfg: Config):
@@ -82,6 +89,9 @@ def build_epochs(recs: list[Recording], cfg: Config) -> EpochSet:
         if cfg.apply_notch:
             sig = notch(sig, cfg.notch_hz, cfg.fs)
         sig = bandpass(sig, lo, hi, cfg.fs)
+        stop = cfg.band_stop()
+        if stop is not None:
+            sig = bandstop(sig, stop[0], stop[1], cfg.fs)
         chunks = epoch_recording(
             Recording(rec.subject, rec.label, rec.condition, sig, rec.ch_names), cfg)
         if chunks is None or len(chunks) == 0:

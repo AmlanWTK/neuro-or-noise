@@ -1,0 +1,15 @@
+{
+  "data": "D:\\Project\\PaperPlan\\EEG",
+  "band": "gamma",
+  "epoch_sec": 15.0,
+  "P3": [
+    {
+      "band": "gamma_noline",
+      "epoch_random": 0.7366395895681915,
+      "epoch_random_subject": 0.7301587301587301,
+      "subject_kfold": 0.6844805472424113,
+      "subject_kfold_subject": 0.6984126984126984,
+      "gap": 0.05215904232578028
+    }
+  ]
+}
