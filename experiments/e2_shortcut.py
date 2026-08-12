@@ -168,8 +168,14 @@ def probe_band_matrix(recs, bands=None, epoch_sec=15.0, model="artifact_lr",
                 prob=[float(v) for v in ps])
         row["gap"] = row["epoch_random"] - row["subject_kfold"]
         rows.append(row)
-        print(f"  {band:10s} epoch-random={row['epoch_random']:.4f}  "
-              f"subject-wise={row['subject_kfold']:.4f}  gap={row['gap']:+.4f}")
+        # NOTE ON TERMINOLOGY: 'epoch_random' and 'subject_kfold' name the SPLIT.
+        # Both accuracies below are EPOCH-level. The subject-level number (one
+        # decision per patient) is separate and always lower-variance-looking but
+        # far less powered. Print both so they can never be confused again.
+        print(f"  {band:10s} epoch-acc: split=epoch-random {row['epoch_random']:.4f} | "
+              f"split=subject-wise {row['subject_kfold']:.4f}  gap={row['gap']:+.4f}")
+        print(f"  {'':10s} subject-acc (n={len(row['subject_kfold_pred']['y'])}): "
+              f"{row['subject_kfold_subject']:.4f}")
 
     print("\n  ranking under epoch-random :",
           " > ".join(r["band"] for r in sorted(rows, key=lambda r: -r["epoch_random"])))

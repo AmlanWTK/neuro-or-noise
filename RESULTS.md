@@ -453,3 +453,80 @@ Now requiring a paired test before it can be stated:
 - [ ] **`gamma_low` 30–45 with the CNN** — locate where the gamma result actually lives
 - [ ] multi-seed repeats for every headline number
 - [ ] E1 at the paper's config
+
+---
+
+## Paired comparison: CNN vs linear probe on gamma ⭐ **CLAIM RETRACTED**
+
+```
+python experiments/compare_runs.py results/runs/20260812-215110_e2 \
+                                   results/runs/20260812-222407_e2
+```
+
+| Model | Subject-level acc | 95% CI |
+|---|---|---|
+| Ex-1DCNN | 0.8413 | [0.730, 0.921] |
+| 5 artifact scalars | 0.8730 | [0.778, 0.952] |
+
+**McNemar: 1 vs 3 discordant subjects, p = 0.625. NOT SIGNIFICANT.**
+
+### The claim "a linear probe BEATS the CNN" is retracted
+
+The difference is **2 subjects out of 63**. It is noise. The defensible statement is:
+
+> A five-parameter logistic regression on signal-quality statistics **matches** an
+> 11-layer CNN (0.873 vs 0.841, McNemar p = 0.63) under identical subject-independent
+> evaluation.
+
+That is still a serious result — the deep architecture buys nothing measurable — and
+unlike "beats", it survives review.
+
+### Terminology correction (this bit me)
+
+The P3 console prints `subject-wise=0.8294`, where **"subject-wise" names the SPLIT,
+not the aggregation unit**. That number is EPOCH-level accuracy under a subject-wise
+split. The SUBJECT-level accuracy for the same run is **0.8413**.
+
+Earlier entries in this file used "subject-wise accuracy" for the epoch-level number.
+Both are legitimate, they answer different questions, and they must be labelled
+distinctly in the paper. P3 now prints both.
+
+### ⚠ Statistical power floor — affects every comparison in this project
+
+With 63 subjects, McNemar cannot reach p<0.05 until **≥6 subjects net** flip:
+
+| Discordant | p | Smallest detectable gap |
+|---|---|---|
+| 0 vs 6 | 0.031 | **0.095** |
+| 0 vs 8 | 0.008 | 0.127 |
+| 0 vs 10 | 0.002 | 0.159 |
+
+**No subject-level comparison below ~0.10 can ever be significant in this dataset.**
+Consequences for the paper:
+
+- Model-vs-model claims are mostly unavailable. Do not make them.
+- Build on **epoch-level** contrasts where n is in the thousands (the protocol gap,
+  0.9436 → 0.8294, is well powered), on **effect sizes with CIs**, and on the
+  **qualitative structural findings**, which need no significance test at all:
+  the 80 Hz low-pass vs the 30–100 Hz nominal band; band-choice invariance;
+  the mains-excision null.
+- Report CIs everywhere. [0.730, 0.921] is honest about what 63 subjects can support.
+
+## Revised claim list — what survives
+
+| # | Claim | Status |
+|---|---|---|
+| 1 | 99.60% does not reproduce (0.829 epoch / 0.841 subject) | **solid** |
+| 2 | Protocol accounts for 0.114 epoch-level at the paper's config | **solid, well powered** |
+| 3 | Nominal gamma is 20 Hz wider than the recorded signal | **solid, structural** |
+| 4 | Band choice barely matters (spread 0.070 over 7 bands) | **solid** |
+| 5 | Mains region contributes nothing (0.8294 → 0.8290) | **solid null** |
+| 6 | 5 scalars *match* the CNN | **solid as "match"** |
+| 7 | 5 scalars *beat* the CNN | **RETRACTED, p=0.63** |
+| 8 | Beta is the true biomarker | **not supported** — CNN beta 0.678 < gamma 0.829 |
+
+## Next
+
+- [ ] `gamma_low` 30–45 with the CNN — the only unmeasured region that matters
+- [ ] multi-seed (5 seeds) on gamma for both models — gives error bars, not just CIs
+- [ ] E1 at the paper's config, with subject-level numbers reported separately
