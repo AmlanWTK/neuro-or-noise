@@ -1,0 +1,28 @@
+[runlog] results\runs\20260813-083449_bandcheck
+[load_husm] 119 recordings, 63 subjects (MDD=33, HC=30), channels=[19]
+[load_husm] 1 duplicate file(s) dropped:
+    6921959_H S15 EO.edf  (kept 6921143_H S15 EO.edf)
+[load_husm] 7 subject(s) lack both EC and EO (kept): {'HC_012': ['EO'], 'HC_018': ['EO'], 'HC_025': ['EC'], 'MDD_012': ['EO'], 'MDD_016': ['EO'], 'MDD_004': ['EO'], 'MDD_007': ['EC']}
+[load_husm] skipped 62 file(s): Counter({'TASK recording': 61, 'duplicate of an earlier file': 1})
+
+========================================================================
+ BandCheck report -- band 'gamma' (30-100 Hz), model 'ex1dcnn', n=63
+========================================================================
+ [FAIL] V1  Passband support
+        29% of the band (20 Hz) lies above the usable edge 80 Hz -- that portion contains no signal
+ [FLAG] V2  Protocol delta
+        split rule accounts for 0.091
+ [FAIL] V3  Artifact control
+        a 5-scalar signal-quality baseline MATCHES the model (0.873 vs 0.857, McNemar p=1.00) -- no evidence the model uses neural information
+ [FAIL] V4  Sub-band localisation
+        30-53.3 Hz alone reaches 0.873 vs 0.857 for the full band (r=0.99, 98% agreement) -- the claim is mis-specified as a whole-band effect
+ [ok]   V5  Excision control
+        removing 45-55 Hz changes accuracy by -0.0159 -- that region is NOT the mechanism
+------------------------------------------------------------------------
+ VERDICT: NOT WELL-POSED
+========================================================================
+
+
+[runlog] 8643.6s  commit e1241e4  [UNCOMMITTED CHANGES]
+[runlog] saved -> results\runs\20260813-083449_bandcheck
+[runlog] WARNING: working tree is dirty, so this run is not reproducible from a commit. Commit before the next run.

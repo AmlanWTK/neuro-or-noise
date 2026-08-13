@@ -1,0 +1,131 @@
+{
+  "band": "gamma",
+  "band_range": [
+    30.0,
+    100.0
+  ],
+  "model": "ex1dcnn",
+  "n_subjects": 63,
+  "verdict": "NOT WELL-POSED",
+  "checks": [
+    {
+      "id": "V1",
+      "name": "Passband support",
+      "status": "FAIL",
+      "headline": "29% of the band (20 Hz) lies above the usable edge 80 Hz -- that portion contains no signal",
+      "value": 0.2857142857142857,
+      "detail": {
+        "band": [
+          30.0,
+          100.0
+        ],
+        "empirical_edge_hz": 56.0,
+        "header_lp_hz": 80.0,
+        "edge_used_hz": 80.0,
+        "edge_sources_agree": true,
+        "dead_hz": 20.0,
+        "dead_fraction": 0.286
+      }
+    },
+    {
+      "id": "V2",
+      "name": "Protocol delta",
+      "status": "FLAG",
+      "headline": "split rule accounts for 0.091",
+      "value": 0.09106455750320641,
+      "detail": {
+        "epoch_random": 0.947,
+        "subject_wise": 0.8559,
+        "delta": 0.0911
+      }
+    },
+    {
+      "id": "V3",
+      "name": "Artifact control",
+      "status": "FAIL",
+      "headline": "a 5-scalar signal-quality baseline MATCHES the model (0.873 vs 0.857, McNemar p=1.00) -- no evidence the model uses neural information",
+      "value": 0.015873015873015928,
+      "detail": {
+        "model_acc": 0.8571,
+        "artifact_acc": 0.873,
+        "mcnemar_p": 1.0,
+        "discordant": [
+          1,
+          2
+        ],
+        "model_ci": [
+          0.762,
+          0.937
+        ],
+        "artifact_ci": [
+          0.778,
+          0.952
+        ]
+      }
+    },
+    {
+      "id": "V4",
+      "name": "Sub-band localisation",
+      "status": "FAIL",
+      "headline": "30-53.3 Hz alone reaches 0.873 vs 0.857 for the full band (r=0.99, 98% agreement) -- the claim is mis-specified as a whole-band effect",
+      "value": 0.015857142857142903,
+      "detail": {
+        "full_band_acc": 0.8571,
+        "subbands": [
+          {
+            "range": [
+              30.0,
+              53.3
+            ],
+            "acc": 0.873,
+            "r_with_full": 0.986,
+            "agreement": 0.984
+          },
+          {
+            "range": [
+              53.3,
+              76.7
+            ],
+            "acc": 0.6825,
+            "r_with_full": 0.636,
+            "agreement": 0.762
+          },
+          {
+            "range": [
+              76.7,
+              100.0
+            ],
+            "acc": 0.5397,
+            "r_with_full": 0.281,
+            "agreement": 0.619
+          }
+        ],
+        "best": {
+          "range": [
+            30.0,
+            53.3
+          ],
+          "acc": 0.873,
+          "r_with_full": 0.986,
+          "agreement": 0.984
+        }
+      }
+    },
+    {
+      "id": "V5",
+      "name": "Excision control",
+      "status": "PASS",
+      "headline": "removing 45-55 Hz changes accuracy by -0.0159 -- that region is NOT the mechanism",
+      "value": -0.015873015873015928,
+      "detail": {
+        "intact": 0.8571,
+        "excised": 0.873,
+        "delta": -0.0159,
+        "stop_hz": [
+          45.0,
+          55.0
+        ]
+      }
+    }
+  ]
+}

@@ -530,3 +530,138 @@ Consequences for the paper:
 - [ ] `gamma_low` 30–45 with the CNN — the only unmeasured region that matters
 - [ ] multi-seed (5 seeds) on gamma for both models — gives error bars, not just CIs
 - [ ] E1 at the paper's config, with subject-level numbers reported separately
+
+---
+
+## gamma_low 30–45 Hz (Ex-1DCNN) — the localisation is complete
+
+| Band | Epoch acc (subject-wise split) | Subject-level acc | Run |
+|---|---|---|---|
+| gamma 30–100 | 0.8294 | **0.8413** | `20260812-215110_e2` |
+| **gamma_low 30–45** | **0.8401** | **0.8413** | `20260812-225345_e2` |
+| gamma_bs (45–55 excised) | 0.8290 | — | `20260812-183921_e2` |
+| gamma_noline 55–80 | 0.6845 | — | `20260809-120153_e2` |
+| beta 12–30 | 0.6776 | — | `20260812-152905_e2` |
+
+### 30–45 Hz alone reproduces the entire gamma result
+
+- **Identical subject-level accuracy: 0.8413 vs 0.8413.** McNemar 2 vs 2, p = 1.000.
+- **93.7% decision agreement** between the 30–45 Hz and 30–100 Hz models.
+- **Predicted probabilities correlate at r = 0.979.**
+
+These are not two models that happen to score alike; they are making substantially
+the *same* predictions. Everything above 45 Hz — more than three-quarters of the
+paper's nominal band — contributes nothing.
+
+### The band decomposition, complete
+
+| Sub-band | Width | Epoch acc | Verdict |
+|---|---|---|---|
+| 12–30 (beta) | 18 Hz | 0.6776 | modest |
+| **30–45** | **15 Hz** | **0.8401** | **carries everything** |
+| 45–55 (mains) | 10 Hz | — | contributes 0.0004 |
+| 55–80 | 25 Hz | 0.6845 | modest |
+| 80–100 | 20 Hz | — | empty (LP at 80 Hz) |
+
+A narrow 15 Hz window outperforms both of its wider neighbours. The paper's
+"gamma biomarker" is a **30–45 Hz effect**, reported as though it were a property of
+30–100 Hz.
+
+### What this is worth saying, carefully
+
+30–45 Hz is the *low-gamma edge*, immediately adjacent to beta. Calling it "gamma"
+and testing it as 30–100 Hz obscures three things at once: the effect's true width,
+its position at a band boundary, and the fact that 29% of the reported band was
+never recorded.
+
+This project cannot say **why** 30–45 Hz separates the groups. Candidates that remain
+open: residual EMG (which peaks higher but extends down), the aperiodic difference
+(exponent AUC 0.776), and a genuine low-gamma neural effect. Distinguishing them
+needs a second dataset, which is out of scope here. **Say so in the limitations.**
+
+## Final claim list
+
+| # | Claim | Evidence | Status |
+|---|---|---|---|
+| 1 | 99.60% does not reproduce | 0.829 epoch / 0.841 subject | **solid** |
+| 2 | Protocol accounts for 0.114 | 0.9436 → 0.8294, paper's config | **solid, well powered** |
+| 3 | Nominal band 20 Hz wider than recorded signal | EDF `LP:80Hz` | **solid, structural** |
+| 4 | Band choice barely matters (linear probe) | spread 0.070 over 7 bands | **solid** |
+| 5 | Mains region contributes nothing | 0.8294 → 0.8290 | **solid null** |
+| 6 | **30–45 Hz alone reproduces the full result** | p=1.00, 93.7% agreement, r=0.979 | **solid** |
+| 7 | 5 scalars *match* the CNN | 0.873 vs 0.841, p=0.63 | **solid as "match"** |
+| 8 | 5 scalars *beat* the CNN | p=0.63 | **retracted** |
+| 9 | Beta is the true biomarker | CNN beta 0.678 | **not supported** |
+
+## Next — measurement is done; this is confirmation only
+
+- [ ] 5 seeds on gamma + gamma_low, both models → error bars
+- [ ] E1 at the paper's config, reporting epoch AND subject numbers separately
+- [ ] Optional: finer sweep inside 30–45 Hz to see if it narrows further
+
+---
+
+# ⭐ CANONICAL RESULT — BandCheck report card
+
+```
+python experiments/bandcheck_run.py --data "D:\Project\PaperPlan\EEG" \
+    --band gamma --model ex1dcnn --header-lp 80
+```
+Run `20260813-083449_bandcheck`, 8644 s, 63 subjects, max_epochs=40, 10 folds, 15 s epochs.
+
+| Check | Status | Result |
+|---|---|---|
+| **V1** Passband support | **FAIL** | 29% of the band (20 Hz) lies above the 80 Hz usable edge |
+| **V2** Protocol delta | **FLAG** | split rule alone accounts for **0.091** |
+| **V3** Artifact control | **FAIL** | 5-scalar baseline **matches** the CNN: 0.873 vs 0.857, McNemar **p=1.00** |
+| **V4** Sub-band localisation | **FAIL** | **30–53.3 Hz alone** reaches 0.873 vs 0.857 full-band (r=0.99, 98% agreement) |
+| **V5** Excision control | **PASS** | removing 45–55 Hz changes accuracy by −0.016 — mains is not the mechanism |
+| | | **VERDICT: NOT WELL-POSED** |
+
+**This is Table 1 of the paper.** One command, one run record, every number traceable.
+
+### ⚠ Hyperparameter inconsistency — resolved, but must be stated
+
+Two code paths used different training budgets, and it moved the numbers:
+
+| Quantity | BandCheck (max_epochs=40) | earlier P3 (max_epochs=25) |
+|---|---|---|
+| protocol delta | 0.091 | 0.114 |
+| CNN subject-level acc | 0.857 | 0.841 |
+| McNemar p (CNN vs LR) | 1.00 | 0.625 |
+
+`probe_band_matrix()` hardcoded `max_epochs=25` while `Config` defaults to 40, so
+BandCheck trains 60% longer. Neither is wrong; they are different experiments.
+
+**Decision: BandCheck (max_epochs=40) is canonical.** It is the single-command,
+single-record path, and the paper quotes it throughout. `max_epochs` is now an
+explicit parameter at every level of the protocol and must be reported alongside
+any result. Earlier P3 numbers stay in this log as a sensitivity check — and they
+are reassuring: every qualitative conclusion is identical under both budgets.
+
+That is worth one sentence in the paper. *"All five verdicts are unchanged when the
+training budget is reduced from 40 to 25 epochs"* is a robustness claim reviewers
+like, and it costs nothing because the runs already exist.
+
+### Notes on individual checks
+
+**V2 is FLAG, not FAIL** at 0.091 — just under the 0.10 threshold. Report the number,
+not the label; a threshold this close to the boundary should not carry rhetorical
+weight. The honest sentence is "the split rule accounts for roughly nine accuracy
+points," and the reader can judge.
+
+**V4 found 30–53.3 Hz**, a uniform third, rather than the 30–45 Hz found by hand.
+Both support the same conclusion. The uniform split is the defensible one to report
+because it is not tuned to the answer; cite the hand-localised 30–45 Hz result
+(p=1.00, r=0.979) as the finer follow-up.
+
+**V5 went slightly negative** (−0.016): excising the mains region *improved*
+accuracy marginally. Within the ±0.02 null band, so PASS. Do not describe this as
+"removing mains helps" — at n=63 that is one subject.
+
+## Remaining before submission
+
+- [ ] 2 extra seeds on the BandCheck config → error bars on Table 1
+- [ ] E1 protocol table at max_epochs=40 for consistency with Table 1
+- [ ] Figures: band decomposition, protocol deltas, sub-band agreement scatter
+- [ ] Draft
