@@ -93,8 +93,13 @@ class Config:
         return spec[2] if len(spec) > 2 else None
 
     def tag(self) -> str:
+        # max_epochs MUST be in the tag: bandcheck caches fits keyed on this
+        # string, and two configs differing only in training budget produce
+        # materially different results (0.091 vs 0.114 for the protocol delta).
+        # Omitting it would let a sensitivity analysis silently reuse the wrong fit.
         return (f"{self.band}_{self.epoch_sec:g}s_ov{self.overlap_sec:g}"
-                f"_{self.split}_{self.norm_scope}_{self.model}_s{self.seed}")
+                f"_{self.split}_{self.norm_scope}_{self.model}"
+                f"_e{self.max_epochs}_s{self.seed}")
 
     def to_dict(self):
         return asdict(self)

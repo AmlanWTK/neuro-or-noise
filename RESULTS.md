@@ -665,3 +665,73 @@ accuracy marginally. Within the ±0.02 null band, so PASS. Do not describe this 
 - [ ] E1 protocol table at max_epochs=40 for consistency with Table 1
 - [ ] Figures: band decomposition, protocol deltas, sub-band agreement scatter
 - [ ] Draft
+
+---
+
+# ⭐⭐ MULTI-SEED + SENSITIVITY — supersedes the single-seed Table 1
+
+Four BandCheck runs: seed 0/1/2 at `max_epochs=40`, plus seed 0 at 25.
+Runs `...083449`, `...165955`, `...182919`, `...142021`.
+
+## Verdict stability
+
+| Check | 40ep s0 | 25ep s0 | 40ep s1 | 40ep s2 |
+|---|---|---|---|---|
+| V1 | FAIL | FAIL | FAIL | FAIL |
+| V2 | **FLAG** | **FAIL** | **FAIL** | **FAIL** |
+| V3 | FAIL | FAIL | FAIL | FAIL |
+| V4 | FAIL | FAIL | FAIL | FAIL |
+| V5 | **PASS** | **PASS** | **FLAG** | **FLAG** |
+| **Verdict** | NOT WELL-POSED | NOT WELL-POSED | NOT WELL-POSED | NOT WELL-POSED |
+
+## Quantities across the three seeds (max_epochs=40)
+
+| Quantity | s0 | s1 | s2 | mean ± sd |
+|---|---|---|---|---|
+| V2 protocol delta | 0.0911 | 0.1112 | 0.1163 | **0.106 ± 0.013** |
+| V3 model accuracy | 0.8571 | 0.8413 | 0.8413 | **0.847 ± 0.009** |
+| V3 artifact accuracy | 0.873 | 0.873 | 0.873 | **0.873** (deterministic) |
+| V3 McNemar p | 1.00 | 0.625 | 0.625 | all ≥ 0.05 |
+| V5 excision delta | −0.0159 | −0.0317 | +0.0317 | **−0.005 ± 0.033** |
+| V1 dead fraction | 0.286 | 0.286 | 0.286 | **0.286** (deterministic) |
+
+## Two things this changes
+
+### 1. Seed 0 was the lenient outlier on V2
+
+The protocol delta is **0.106 ± 0.013**, and **2 of 3 seeds exceed the 0.10
+threshold**. Our "canonical" single-seed run happened to draw the one seed below
+it. Reporting 0.091 as *the* value would have understated the effect and assigned
+the wrong label.
+
+**Action:** the paper reports **0.106 ± 0.013 (3 seeds)**, not 0.091. V2's status
+is FAIL in the majority of runs; better still, report the number and skip the label.
+
+### 2. V5's label is noise — and that *strengthens* the conclusion
+
+The excision delta is **−0.005 ± 0.033**, and the **sign flips** across seeds
+(−, −, +). In subject counts the effect is 1–2 people out of 63. The categorical
+label swings PASS/PASS/FLAG/FLAG purely on seed.
+
+So: the *label* is meaningless at this sample size, but the *conclusion* is now
+better supported than before. The mains region's contribution is zero within
+noise, not merely "small in one run."
+
+This is the strongest possible empirical argument for the paper's own
+recommendation — **report the quantity, not the verdict** — and it is now backed
+by data rather than asserted as a caveat. It belongs in the paper as a finding,
+not a limitation.
+
+## What is rock solid
+
+- **V1**: identical in 4/4 runs. Deterministic, no model involved.
+- **V3**: McNemar ≥ 0.05 in 4/4. The "matches, not beats" conclusion is robust.
+- **V4**: best sub-band 30–53.3 Hz in 4/4; sub-band ≥ full band in 4/4.
+- **Overall verdict**: NOT WELL-POSED in 4/4.
+
+## Sensitivity to training budget (the claim previously retracted)
+
+At 25 epochs the V2 delta is 0.1142, inside the 40-epoch seed range
+[0.0911, 0.1163]. **Budget variation is smaller than seed variation.** The
+correct statement is: *no verdict depends on the training budget; V2 and V5
+labels depend on the seed.*
