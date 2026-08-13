@@ -28,6 +28,10 @@ def _main(run):
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--max-epochs", type=int, default=40,
                     help="training budget; MOVES THE NUMBERS -- always report it")
+    ap.add_argument("--weight-decay", type=float, default=1e-4,
+                    help="Adam decoupled weight decay. The target paper states "
+                         "lambda=0.02; applied literally that collapses the "
+                         "5-filter net to a constant output. Pass 0.02 to log it.")
     args = ap.parse_args()
 
     recs = (make_synthetic(minutes=args.minutes) if args.data == "synthetic"
@@ -38,7 +42,8 @@ def _main(run):
                         seed=args.seed, header_lp=args.header_lp,
                         checks=tuple(args.checks.split(",")),
                         n_sub=args.n_sub, stop=(lo, hi),
-                        max_epochs=args.max_epochs)
+                        max_epochs=args.max_epochs,
+                        weight_decay=args.weight_decay)
     run.set_result(rep.to_dict())
 
 

@@ -735,3 +735,210 @@ At 25 epochs the V2 delta is 0.1142, inside the 40-epoch seed range
 [0.0911, 0.1163]. **Budget variation is smaller than seed variation.** The
 correct statement is: *no verdict depends on the training budget; V2 and V5
 labels depend on the seed.*
+
+---
+
+# Phase: paper figures (13 Aug 2026)
+
+All three figures are now built, each by a script that reads `results/runs/*/result.json`
+and prints the values it drew. No number in any figure is typed by hand.
+
+| Fig | Script | Reads | Shows |
+|---|---|---|---|
+| 1 | `paper/make_fig1.py` | 3 bandcheck seeds + PSD | V1: the band runs to 100 Hz, the signal ends at 56 Hz |
+| 2 | `paper/make_fig2.py` | 3 bandcheck seeds | V2 protocol delta + V3 five-scalar baseline |
+| 3 | `paper/make_fig3.py` | 3 bandcheck seeds; `20260812-225345_e2`, `20260812-215110_e2` | V4 uniform thirds + per-subject agreement |
+
+## Fig. 3 output (verbatim from the script)
+
+```
+(a) V4 uniform thirds, 3 seeds, 40 epochs
+    full band  0.8466 +/- 0.0091
+     30.0- 53.3  acc 0.8730+/-0.0159   agree 0.9630+/-0.0364   r 0.980+/-0.005
+     53.3- 76.7  acc 0.7143+/-0.0275   agree 0.7937+/-0.0548   r 0.701+/-0.087
+     76.7-100.0  acc 0.5397+/-0.0000   agree 0.5873+/-0.0692   r 0.150+/-0.143
+(b) hand-specified 30-45 Hz vs 30-100 Hz, seed 0, 25 epochs
+    subject-level acc  30-45 0.8413   30-100 0.8413
+    r 0.9788   agreement 0.9365   discordant b=2 c=2   McNemar p=1.0000
+    corner counts: both<0.05 18, both>0.95 13
+```
+
+## Two text errors the figure caught
+
+Building a figure from all four runs rather than from seed 0 exposed two numbers
+in the draft that no run supported. Both are fixed in `icassp2027.tex`.
+
+1. **V4 was quoted at seed 0 and rounded up.** The abstract and Table 1 said
+   *r=0.99, 98% agreement*. Across all four runs it is **r = 0.976–0.986** and
+   **92–98% agreement** (3 seeds at 40 epochs: r = 0.980 ± 0.005, agreement
+   0.963 ± 0.036). The claim survives; the precision did not.
+2. **The conclusion had stale arithmetic.** It said the split rule accounts for
+   *nine accuracy points* — the old single-seed 0.091, superseded by 0.106 ±
+   0.013 — and that *a fifth* of the band was never recorded, when 20 Hz of a
+   70 Hz band is 29%. Now **eleven points** and **more than a quarter**.
+
+Same pattern as the five earlier retractions: the number that had never been
+recomputed after the seed runs was the number that was wrong.
+
+## Draft state
+
+`icassp2027.tex` compiles to **4 pages** with all three figures placed
+(Fig. 1 in §V1, Fig. 2 in §V3, Fig. 3 in §V4) and references beginning on
+page 4 — inside the ICASSP limit with room for the outstanding citations.
+
+---
+
+# Phase: closing the citation gap (13 Aug 2026)
+
+Tier-1 item 3 — "3–5 citations of EEG-MDD papers using epoch-level evaluation" —
+is closed, but **not with the evidence the plan called for.**
+
+## The plan failed, for a reason worth recording
+
+Two independent search passes examined ~11 candidate papers. **The evaluation
+protocol could not be confirmed from primary text for a single one of them.**
+ScienceDirect blocks automated access; IEEE Xplore returns nothing; PMC serves a
+CAPTCHA; Springer exposes abstracts only, and abstracts do not describe split
+rules.
+
+What was available was second-hand — review tables reporting what those papers
+did. Citing individual named papers as leaky on that basis would have been the
+exact error this project keeps catching: a load-bearing claim with no primary
+source, this time about other researchers' work, in a submitted manuscript.
+Rejected.
+
+## What replaced it is stronger
+
+| Ref | What it gives us |
+|---|---|
+| **Brookshire et al. 2024**, *Front. Neurosci.* 18:1373515 | Survey of 63 deep-learning EEG papers since 2018, depression among the six conditions: **61.9% segment-based** holdout, 6.3% unstated, only 27.0% subject-based. Plus their own reproduction: Alzheimer's **99.8% → 53.0%**, seizure **79.1% → 65.1%** under a subject-wise split. |
+| **Saeb et al. 2017**, *GigaScience* 6(5):gix019 | 62 studies: median error **5.60% record-wise vs 13.00% subject-wise**, p<0.01. The canonical statement of the problem. |
+| **Kapoor & Narayanan 2023**, *Patterns* 4(9):100804 | Leakage documented in **294 papers across 17 fields**. |
+
+Brookshire's figures were verified twice, from the Frontiers full text and the
+medRxiv preprint independently; they agree exactly.
+
+Three gains over the original plan: the claim is now *quantified* rather than an
+existence proof; it rests on a peer-reviewed audit rather than on our own reading
+of other people's methods sections; and it makes the fairness argument **without
+accusing any individual paper** — which was always the hazard in this framing.
+
+Their measured gaps (0.14 and 0.47) also put ours in perspective: **our 0.106 is
+the small end of this effect**, which is a useful thing for a reviewer to see.
+
+## Three of my priors were wrong
+
+- **Not Mumtaz-dataset papers at all:** Uyulan et al. 2021 (46/46, Turkish
+  cohort), DepHNN / Sharma et al. 2021 (21/24, Neuroscan), Thoduparambil et al.
+  2020 (PRED+CT, New Mexico).
+- **The convention is not universal on this dataset.** Ke et al. 2021, MS-MDDNet
+  2026 and Bagherzadeh et al. 2025 all state subject-disjoint evaluation on
+  Mumtaz. The draft therefore says *the field's default*, not *universal*.
+
+## One live question and one open lead
+
+- **Ke et al. 2021** (*Front. Comput. Neurosci.* 15:773147) reports **99±0.08%**
+  on Mumtaz with what its own table shows as a subject-disjoint split (24/6 HC,
+  27/7 MDD). Either they found something we did not, or the split is disjoint and
+  the reported metric is epoch-level. **Resolve before submission** — if it is
+  the latter, it is the single cleanest example of the epoch/subject conflation
+  this paper is about, on the exact dataset.
+- **Seal et al. 2021 "DeprNet"** (*IEEE TIM* 70:1–13): three secondary sources
+  say it reports both record-wise (~99.3%) and subject-wise (~91.4%) splits. If
+  true it is an independent replication of our V2. **Not cited — second-hand.**
+  Needs a library proxy.
+
+## Draft state
+
+5 pages: 4 of content, references alone on page 5 — exactly the ICASSP budget.
+Three citations added ([7]–[9]), cited in the Introduction, in V2, and in the
+Discussion paragraph that previously just asserted the convention was widespread.
+
+## Ke et al. 2021 resolved — it is epoch-level (13 Aug)
+
+The open question from the citation phase is closed. Ke et al. (*Front. Comput.
+Neurosci.* 15:773147) report **99±0.08%** on this dataset from a partition whose
+counts imply subject-disjointness — **but the metric is epoch-level**: 3,728
+four-second segments drawn from a **single, non-rotated holdout of 13 subjects**,
+with no per-subject aggregation anywhere in the paper. Their five-fold CV is for
+hyperparameter tuning on the training set, not test rotation.
+
+Verified from the open-access full text and independently re-checked against
+three renderings (Frontiers HTML, PMC mirror, Frontiers PDF), all agreeing.
+Table 2 sums exactly: 24+27 train and 6+7 test subjects = 64; 6,898+7,816 train
+and 1,755+1,973 test segments = 18,442.
+
+**Two corrections to my own first draft**, caught by the independent check:
+
+1. "under a subject-disjoint partition" implied Ke et al. claimed it. They never
+   use the word — it is our inference from their table. Softened.
+2. "the ±0.08% therefore does not reflect between-subject variability" — the
+   paper never states what it ranges over, so the "therefore" was mine. Replaced
+   with the structural argument, which holds regardless: a fixed 13-subject test
+   set cannot express between-subject variability whatever the ± ranges over.
+
+**Why it earned page space.** It pre-empts the strongest objection available
+against this paper — *others get 99% on this dataset with a proper subject
+split, so your 0.847 is a weak reimplementation.* And it is not a leakage
+accusation; their split looks clean. The point is the reporting unit.
+
+**Not claimed:** that epoch-level reporting explains their 99%. They may include
+task recordings (18,442 × 4 s ÷ 64 ≈ 19 min/subject, against ~10 min of EC+EO
+rest — but the paper does not say), use a different band, and hold out 13
+subjects once. A mechanism claim here would be the sixth retraction.
+
+## Page budget
+
+Adding the paragraph pushed the Conclusion onto page 5, breaking the ICASSP
+"4 pages content + 1 page references" rule. Recovered by trimming the Fig. 3
+caption, the redundant second statement of *report the quantity not the verdict*
+in §V-C, the Conclusion's re-listing of all four failures, folding
+Reproducibility into the Conclusion, shortening Fig. 3 (4.45 in → 3.95 in) and
+including it at 0.92 column width. **Now 4 pages of content, references alone on
+page 5.** Nothing was cut for space that carried a result.
+
+## λ = 0.02 logged on real data — B3 confirmed, two clauses retracted (13 Aug)
+
+`20260813-220728_bandcheck`, 3298 s, 63 subjects, V2 only.
+
+| | epoch-random | subject-wise | Δp |
+|---|---|---|---|
+| λ=1e-4 (used throughout the paper) | 0.947 | 0.856 | +0.091 |
+| **λ=0.02, as published, applied as decoupled weight decay** | **0.514** | **0.548** | **−0.034** |
+
+Both arms at chance. The claim holds — the published λ, taken literally,
+destroys the model. **The last claim in the paper resting on an unrecorded run
+now has a run record.**
+
+### Two clauses the data did not support
+
+The draft said λ=0.02 "collapses our reimplementation to a **constant output**,
+at **every learning rate** tested." Neither survives:
+
+1. **"constant output"** — chance-level accuracy is consistent with a constant
+   output but does not demonstrate one; a model emitting noise scores the same.
+   The logit-variance number came from the container run whose record was never
+   preserved, so it cannot be cited. Replaced with the four measured accuracies.
+2. **"at every learning rate tested"** — this run used lr=1e-3 only. No sweep
+   has a preserved record. Deleted rather than re-earned.
+
+The negative sign is not a finding: a chance-level model scores whatever
+fraction the majority class occupies in each test set, and subject-wise folds
+have lumpier class balance than random ones.
+
+### A real hole in our own protocol, found by accident
+
+**Δp = −0.034 PASSES V2.** The run printed `VERDICT: WELL-POSED` for a model
+that had learned nothing. A degenerate model has no protocol delta, so V2 alone
+cannot tell "no leakage" apart from "no model."
+
+Now stated in §II-B: *Δp must be read alongside the absolute accuracies.* Found
+by data, not by reasoning — which is the whole argument for running things.
+
+### Page budget, again
+
+The addition pushed the Conclusion onto page 5. Recovered by moving the
+vacuous-pass point into the V2 definition (stated once, not twice), compressing
+the λ paragraph, dropping a redundant AUC figure in §V1, shrinking Fig. 1 to
+0.90 column width, tightening Fig. 2's caption, and cutting the Conclusion's
+restatement of the abstract. Back to 4 pages + references-only page 5.

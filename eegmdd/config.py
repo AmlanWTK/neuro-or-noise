@@ -97,9 +97,12 @@ class Config:
         # string, and two configs differing only in training budget produce
         # materially different results (0.091 vs 0.114 for the protocol delta).
         # Omitting it would let a sensitivity analysis silently reuse the wrong fit.
+        # weight_decay is here for exactly the same reason -- lambda=0.02 collapses
+        # the network, so a lambda sweep sharing a cache with the default runs
+        # would report the default's numbers under the sweep's label.
         return (f"{self.band}_{self.epoch_sec:g}s_ov{self.overlap_sec:g}"
                 f"_{self.split}_{self.norm_scope}_{self.model}"
-                f"_e{self.max_epochs}_s{self.seed}")
+                f"_e{self.max_epochs}_wd{self.weight_decay:g}_s{self.seed}")
 
     def to_dict(self):
         return asdict(self)

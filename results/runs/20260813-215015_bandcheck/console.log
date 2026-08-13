@@ -1,0 +1,5 @@
+[runlog] results\runs\20260813-215015_bandcheck
+
+[runlog] 0.0s  commit 2ced156  [UNCOMMITTED CHANGES]
+[runlog] saved -> results\runs\20260813-215015_bandcheck
+[runlog] WARNING: working tree is dirty, so this run is not reproducible from a commit. Commit before the next run.

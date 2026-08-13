@@ -132,19 +132,30 @@ def v1_passband_support(recs, band, fs=256, header_lp=None, header_hp=None) -> C
     # edge is an estimate that a steep 1/f can drag down. Prefer the header when
     # available and treat the empirical value as corroboration, reporting both
     # so a reader can see if they disagree.
+    # Report BOTH. The header is what the amplifier was set to; the empirical
+    # edge is where signal actually stops. They can differ a lot (analogue
+    # roll-off, extra anti-alias stages), and the gap is informative. We take
+    # the HEADER as the headline number because it is the conservative one --
+    # it always yields the smaller dead fraction -- but a reader must see both.
     edge = float(header_lp) if header_lp else emp_edge
-    agree = (header_lp is None) or (abs(emp_edge - header_lp) / header_lp < 0.35)
+    # 0.35 was far too loose: 56 vs 80 Hz is a 30% gap and materially changes
+    # the dead fraction (0.29 -> 0.63). Tightened to 0.15.
+    agree = (header_lp is None) or (abs(emp_edge - header_lp) / header_lp < 0.15)
 
     dead = max(0.0, hi - edge)
     frac = dead / (hi - lo)
+    dead_emp = max(0.0, hi - emp_edge) / (hi - lo)
     detail = dict(band=[lo, hi], empirical_edge_hz=round(emp_edge, 1),
                   header_lp_hz=header_lp, edge_used_hz=round(edge, 1),
                   edge_sources_agree=bool(agree),
-                  dead_hz=round(dead, 1), dead_fraction=round(frac, 3))
+                  dead_hz=round(dead, 1), dead_fraction=round(frac, 3),
+                  dead_fraction_empirical=round(dead_emp, 3))
+    extra = ("" if agree else
+             f"; empirically signal stops at {emp_edge:.0f} Hz, giving {dead_emp:.0%}")
     if frac >= 0.15:
         return Check("V1", "Passband support", FAIL,
                      f"{frac:.0%} of the band ({dead:.0f} Hz) lies above the usable "
-                     f"edge {edge:.0f} Hz -- that portion contains no signal",
+                     f"edge {edge:.0f} Hz -- that portion contains no signal{extra}",
                      frac, detail)
     if frac > 0.02:
         return Check("V1", "Passband support", FLAG,
@@ -178,10 +189,12 @@ def _acc(recs, cfg):
     return _CACHE[key]
 
 
-def v2_protocol_delta(recs, band, model, max_epochs=40, epoch_sec=15.0, n_folds=10, seed=0) -> Check:
+def v2_protocol_delta(recs, band, model, max_epochs=40, epoch_sec=15.0, n_folds=10, seed=0,
+                      weight_decay=1e-4) -> Check:
     """Accuracy attributable to the split rule alone."""
     base = dict(band=band, epoch_sec=epoch_sec, overlap_sec=0.0, model=model,
-                seed=seed, n_folds=n_folds, calibrate=False, max_epochs=max_epochs)
+                seed=seed, n_folds=n_folds, calibrate=False, max_epochs=max_epochs,
+                weight_decay=weight_decay)
     a, *_ = _acc(recs, Config(split="epoch_random", norm_scope="global", **base))
     b, *_ = _acc(recs, Config(split="subject_kfold", norm_scope="train_fold", **base))
     d = a - b
@@ -199,7 +212,8 @@ def v2_protocol_delta(recs, band, model, max_epochs=40, epoch_sec=15.0, n_folds=
 
 # ---------------------------------------------------------------- V3
 
-def v3_artifact_control(recs, band, model, max_epochs=40, epoch_sec=15.0, n_folds=10, seed=0) -> Check:
+def v3_artifact_control(recs, band, model, max_epochs=40, epoch_sec=15.0, n_folds=10, seed=0,
+                        weight_decay=1e-4) -> Check:
     """Can five signal-quality scalars match the model?"""
     if model == "artifact_lr":
         # Comparing the artifact baseline against itself is degenerate: it would
@@ -209,7 +223,8 @@ def v3_artifact_control(recs, band, model, max_epochs=40, epoch_sec=15.0, n_fold
                      "not applicable -- the model under test IS the artifact "
                      "baseline; rerun with the substantive model to apply V3")
     base = dict(band=band, epoch_sec=epoch_sec, overlap_sec=0.0, split="subject_kfold",
-                norm_scope="train_fold", seed=seed, n_folds=n_folds, calibrate=False, max_epochs=max_epochs)
+                norm_scope="train_fold", seed=seed, n_folds=n_folds, calibrate=False, max_epochs=max_epochs,
+                weight_decay=weight_decay)
     _, ym, pm, sm = _acc(recs, Config(model=model, **base))
     _, ya, pa, sa = _acc(recs, Config(model="artifact_lr", **base))
     am = binary_metrics(ym, pm)["accuracy"]
@@ -236,13 +251,14 @@ def v3_artifact_control(recs, band, model, max_epochs=40, epoch_sec=15.0, n_fold
 # ---------------------------------------------------------------- V4
 
 def v4_subband_localisation(recs, band, model, max_epochs=40, n_sub=3, epoch_sec=15.0,
-                            n_folds=10, seed=0) -> Check:
+                            n_folds=10, seed=0, weight_decay=1e-4) -> Check:
     """Does one narrow slice reproduce the whole band's result?"""
     lo, hi = BANDS[band][:2]
     edges = np.linspace(lo, hi, n_sub + 1)
     base = dict(epoch_sec=epoch_sec, overlap_sec=0.0, split="subject_kfold",
                 norm_scope="train_fold", model=model, seed=seed,
-                n_folds=n_folds, calibrate=False, max_epochs=max_epochs)
+                n_folds=n_folds, calibrate=False, max_epochs=max_epochs,
+                weight_decay=weight_decay)
 
     full_e, yf, pf, _ = _acc(recs, Config(band=band, **base))
     full = binary_metrics(yf, pf)["accuracy"]
@@ -286,7 +302,7 @@ def v4_subband_localisation(recs, band, model, max_epochs=40, n_sub=3, epoch_sec
 # ---------------------------------------------------------------- V5
 
 def v5_excision_control(recs, band, model, max_epochs=40, stop=(45.0, 55.0), epoch_sec=15.0,
-                        n_folds=10, seed=0) -> Check:
+                        n_folds=10, seed=0, weight_decay=1e-4) -> Check:
     """Band-stop a suspected contaminant; does accuracy move?"""
     lo, hi = BANDS[band][:2]
     if not (lo < stop[0] and stop[1] < hi):
@@ -294,7 +310,8 @@ def v5_excision_control(recs, band, model, max_epochs=40, stop=(45.0, 55.0), epo
                      f"{stop[0]:g}-{stop[1]:g} Hz lies outside the band; not applicable")
     base = dict(epoch_sec=epoch_sec, overlap_sec=0.0, split="subject_kfold",
                 norm_scope="train_fold", model=model, seed=seed,
-                n_folds=n_folds, calibrate=False, max_epochs=max_epochs)
+                n_folds=n_folds, calibrate=False, max_epochs=max_epochs,
+                weight_decay=weight_decay)
     _, y0, p0, _ = _acc(recs, Config(band=band, **base))
     name = "_bc_excised"
     BANDS[name] = (lo, hi, tuple(stop))
@@ -320,7 +337,8 @@ def v5_excision_control(recs, band, model, max_epochs=40, stop=(45.0, 55.0), epo
 
 def run_bandcheck(recs, band="gamma", model="artifact_lr", epoch_sec=15.0,
                   n_folds=10, seed=0, header_lp=None, checks=("V1", "V2", "V3", "V4", "V5"),
-                  n_sub=3, stop=(45.0, 55.0), max_epochs=40, verbose=True) -> Report:
+                  n_sub=3, stop=(45.0, 55.0), max_epochs=40, weight_decay=1e-4,
+                  verbose=True) -> Report:
     """max_epochs is EXPLICIT because it moves the numbers. An earlier code path
     hardcoded 25 and produced a protocol delta of 0.114 where this produces
     0.091 -- same experiment, different training budget. Whatever a paper
@@ -328,7 +346,8 @@ def run_bandcheck(recs, band="gamma", model="artifact_lr", epoch_sec=15.0,
     clear_cache()
     n_subj = len({r.subject for r in recs if r.condition in ("EC", "EO")})
     rep = Report(band=band, band_range=BANDS[band][:2], model=model, n_subjects=n_subj)
-    kw = dict(epoch_sec=epoch_sec, n_folds=n_folds, seed=seed, max_epochs=max_epochs)
+    kw = dict(epoch_sec=epoch_sec, n_folds=n_folds, seed=seed, max_epochs=max_epochs,
+              weight_decay=weight_decay)
 
     if "V1" in checks:
         rep.add(v1_passband_support(recs, band, header_lp=header_lp))

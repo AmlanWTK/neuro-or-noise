@@ -13,7 +13,14 @@
 \title{Is the Band the Biomarker?\\
 A Validity Protocol for Band-Specific EEG Classification Claims}
 
-% TODO: confirm whether ICASSP 2027 is anonymous. Historically it is NOT.
+% CONFIRMED 13 Aug 2026 from 2027.ieeeicassp.org/about/editorial-policies/:
+% "Papers undergo single-anonymous review (i.e., reviewers know the names of the
+% authors, but reviewers are anonymous to the authors and other reviewers)."
+% => Do NOT anonymise. Real names and affiliation go here.
+% Page limit, from /publishing-and-paper-presentation-options/: "up to four
+% pages for technical content including figures and references, and one optional
+% fifth page containing only references." Current build: 4 + refs-only. Compliant.
+% Submissions are screened with iThenticate for plagiarism and self-plagiarism.
 \author{\IEEEauthorblockN{TODO Author}
 \IEEEauthorblockA{TODO Affiliation\\
 TODO email}}
@@ -35,7 +42,7 @@ nominal band extends 20\,Hz beyond the recordings' 80\,Hz acquisition low-pass;
 the split rule alone accounts for $0.106\pm0.013$ accuracy over three seeds; a five-scalar baseline with no
 neural content matches an eleven-layer CNN ($0.873$ vs $0.847\pm0.009$, McNemar
 $p\geq0.625$ across seeds); and a single uniform third of the band reproduces the full-band
-predictions ($r=0.99$, 98\% agreement). We reproduce $0.847\pm0.009$
+predictions ($r=0.98\pm0.01$, 92--98\% decision agreement). We reproduce $0.847\pm0.009$
 subject-level accuracy, not $0.9960$. We release the protocol as a tool; the checks
 add minutes to a linear baseline and a small multiple of one model fit to a deep
 one.
@@ -57,9 +64,17 @@ Three failure modes recur. First, the nominal band may not be supported by the
 data: acquisition filters bound the spectrum, and a band specified beyond that
 bound contains no signal. Second, the reported accuracy may depend on the
 cross-validation split rather than on the signal; epoch-level splits allow a
-model to recognise individuals rather than the condition. Third, the
-discriminative information may be non-neural --- muscle, electrode impedance,
-mains --- in which case the band is incidental.
+model to recognise individuals rather than the condition. This second mode is
+not hypothetical and not new. Saeb \emph{et al.}~\cite{saeb2017} showed in 2017
+that record-wise cross-validation on clinical sensor data yields a median
+error less than half that of subject-wise cross-validation ($5.60\%$ vs
+$13.00\%$ across 62 studies), and a recent audit of deep-learning EEG found that
+reproducing published architectures under a subject-wise split reduced
+Alzheimer's classification from $99.8\%$ to $53.0\%$~\cite{brookshire2024}. It
+is one instance of the leakage problem now documented across 294 papers in 17
+scientific fields~\cite{kapoor2023}. Third, the discriminative information may
+be non-neural --- muscle, electrode impedance, mains --- in which case the band
+is incidental.
 
 None of these requires a replication study to detect. Each is a short
 computation that can be run before any modelling. We package them as
@@ -94,7 +109,13 @@ reported separately; disagreement is itself informative.
 Fit $M$ twice, changing only the split rule: epochs assigned at random, versus
 subjects assigned wholly to train or test. The difference $\Delta_p$ is accuracy
 attributable to the protocol. We flag $\Delta_p\geq0.03$ and fail
-$\Delta_p\geq0.10$.
+$\Delta_p\geq0.10$. The check reports $\Delta_p$ rather than merely recommending
+the subject-wise number, because the size of the gap is diagnostic: published
+gaps of $0.14$ to $0.47$ have been measured on other EEG
+tasks~\cite{brookshire2024}, and a claim whose accuracy is mostly protocol is a
+different object from one where the protocol contributes a point or two.
+$\Delta_p$ must be read alongside the absolute accuracies: a model that has
+learned nothing has no protocol delta either (Sec.~\ref{sec:lambda}).
 
 \subsection{V3: Artifact control}
 Fit a logistic regression on five per-epoch scalars computed within $B$:
@@ -137,11 +158,13 @@ subjects lack one of the two resting conditions. Our analysis uses the 63
 subjects with resting data (33 MDD, 30 HC; 119 recordings), against the 34/30
 stated in~\cite{anik2024}.
 
-We also note a reproducibility detail: the regularisation parameter
-$\lambda=0.02$ stated in~\cite{anik2024} collapses our reimplementation to a
-constant output when applied as decoupled weight decay, at every learning rate
-tested. We use $10^{-4}$. We report this neutrally; the published $\lambda$ is
-evidently a different formulation.
+A reproducibility detail\label{sec:lambda}: applied literally as decoupled
+weight decay, the $\lambda=0.02$ stated in~\cite{anik2024} reduces our
+reimplementation to near chance --- epoch-level $0.514$ epoch-random and $0.548$
+subject-wise, against $0.947$ and $0.856$ at $\lambda=10^{-4}$, with
+$\Delta_p=-0.034$, a value that would pass V2. We use $10^{-4}$ throughout and
+report this neutrally: the published $\lambda$ is evidently a different
+formulation, not an error.
 
 \subsection{Report}
 Table~\ref{tab:bandcheck} gives the BandCheck report for the claim. All results
@@ -161,7 +184,7 @@ $n=63$ subjects, Ex-1DCNN.}
 V1 Passband  & \textbf{FAIL} & 29\% of the band (20\,Hz) lies above the 80\,Hz usable edge \\
 V2 Protocol  & \textbf{FAIL} & split rule alone accounts for $0.106\pm0.013$ (2/3 seeds exceed threshold) \\
 V3 Artifact  & \textbf{FAIL} & 5-scalar baseline matches the CNN: $0.873$ vs $0.847\pm0.009$, McNemar $p\geq0.625$ \\
-V4 Sub-band  & \textbf{FAIL} & 30--53.3\,Hz alone matches or exceeds the full band in 4/4 runs; $r=0.99$, 98\% agreement \\
+V4 Sub-band  & \textbf{FAIL} & 30--53.3\,Hz alone matches or exceeds the full band in 4/4 runs; $r=0.976$--$0.986$, 92--98\% agreement \\
 V5 Excision  & PASS$^\dagger$ & removing 45--55\,Hz changes accuracy by $-0.005\pm0.033$; sign flips across seeds \\
 \midrule
 \multicolumn{3}{c}{\textbf{Verdict: not well-posed} (4/4 runs)} \\
@@ -170,12 +193,25 @@ V5 Excision  & PASS$^\dagger$ & removing 45--55\,Hz changes accuracy by $-0.005\
 \end{tabular}
 \end{table}
 
-\subsection{V1: a fifth of the band was never recorded}
+\subsection{V1: more than a quarter of the band was never recorded}
 The EDF headers report \texttt{HP:0.5Hz LP:80Hz} for all 120 resting files, with
 no difference between groups. The nominal band therefore extends 20\,Hz beyond
-the acquisition low-pass. This is confirmed empirically: 70--100\,Hz yields a
-median MDD/HC log-power ratio of $-0.01$ and mean per-bin AUC $0.537$, and
-100--127\,Hz yields $0.550$ --- chance, as expected of empty spectrum.
+the acquisition low-pass --- 29\% of its width. This is confirmed empirically:
+70--100\,Hz yields a median MDD/HC log-power ratio of $-0.01$ and mean per-bin
+AUC $0.537$ --- chance, as expected of empty spectrum (Fig.~\ref{fig:band}). The
+median PSD in fact reaches its noise floor near 56\,Hz, well below the nominal
+low-pass, making the empirical dead fraction $0.63$; we report the header-based
+$0.29$ as the conservative figure.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.90\columnwidth]{figs/fig1_band_decomposition.pdf}
+\caption{V1. (a) Median across-subject PSD; the 80--100\,Hz portion of the
+nominal band (hatched) lies above the acquisition low-pass and contains no
+signal. (b) Subject-level accuracy by sub-band, three seeds. The portion of the
+band that was never recorded is at the majority-class rate.}
+\label{fig:band}
+\end{figure}
 
 \subsection{V3: five scalars suffice}
 The artifact baseline reaches $0.873$ subject-level accuracy against
@@ -190,14 +226,44 @@ spread of $0.070$ against a majority-class baseline of $0.524$. Band choice is
 therefore close to irrelevant for this discriminant, which is difficult to
 reconcile with a claim that one band is uniquely effective.
 
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figs/fig2_protocol_and_baseline.pdf}
+\caption{What the reported accuracy is made of. (a) V2: changing only the
+cross-validation split moves epoch-level accuracy by $0.106\pm0.013$, and
+neither protocol approaches the reported $0.9960$. (b) V3: five signal-quality
+scalars match the eleven-layer CNN at subject level. Points are seeds; the
+dashed line is the majority-class rate.}
+\label{fig:protocol}
+\end{figure}
+
 \subsection{V4: the effect is 15--23\,Hz wide, not 70}
-The best uniform third, 30--53.3\,Hz, is 30--53.3\,Hz in all four runs and
-matches or exceeds the full band in each ($0.873$ vs $0.857$ at seed~0), with
-predicted probabilities correlating at $r=0.99$ and 98\% decision agreement. A hand-specified 30--45\,Hz band --- reported as a secondary,
-post-hoc analysis, and measured at the reduced 25-epoch budget --- gives
-identical subject-level accuracy to the full band ($0.8413$ both, McNemar
-$p=1.00$, $r=0.979$, 93.7\% agreement). Everything above
-45\,Hz, three-quarters of the nominal band, is inert.
+The best uniform third is 30--53.3\,Hz in all four runs, and it matches or
+exceeds the full band in each ($0.873\pm0.016$ against $0.847\pm0.009$ over the
+three 40-epoch seeds), with predicted probabilities correlating at
+$r=0.980\pm0.005$ and 92--98\% decision agreement. The upper two thirds do not:
+53.3--76.7\,Hz reaches $0.714\pm0.028$ and 76.7--100\,Hz $0.540\pm0.000$ against
+a majority-class baseline of $0.524$, the latter correlating with the full-band
+predictions at $r=0.15\pm0.14$ (Fig.~\ref{fig:subband}a). A hand-specified
+30--45\,Hz band --- reported as a secondary, post-hoc analysis, and measured at
+the reduced 25-epoch budget --- gives identical subject-level accuracy to the
+full band ($0.8413$ both, McNemar $p=1.00$, $r=0.979$, 93.7\% agreement), and
+does so subject by subject rather than only on average
+(Fig.~\ref{fig:subband}b). Everything above 45\,Hz, three-quarters of the
+nominal band, is inert.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.92\columnwidth]{figs/fig3_subband_agreement.pdf}
+\caption{The band is mis-specified in width. (a) V4 as prescribed: three uniform
+thirds of 30--100\,Hz, each refitted. The lowest third matches the full band on
+accuracy and on per-subject decisions; the top third is at the majority-class
+rate and uncorrelated with the full-band predictions. Points are the three
+40-epoch seeds. (b) The same result subject by subject, for a hand-specified
+30--45\,Hz band at the 25-epoch budget. Shaded quadrants are where the two
+models decide differently; ringed markers are the four subjects there.}
+\label{fig:subband}
+\end{figure}
 
 \subsection{What the discriminative signal is}
 Fitting an aperiodic $1/f^{\chi}$ model over 2--45\,Hz (mains excluded), the
@@ -253,13 +319,12 @@ flags. The V5 quantity is $-0.005\pm0.033$ and its sign flips across seeds,
 swinging the label between pass and flag; in subject counts the effect is one to
 two people out of 63.
 
-We regard this as the strongest available argument for a recommendation we would
-otherwise have had to assert: \textbf{report the quantity, not the categorical
-verdict}. A threshold that sits inside the seed-to-seed spread carries no
-information. Note also that the V5 result is \emph{strengthened} by this
-analysis --- an effect centred on zero with flipping sign is stronger evidence
-that the mains region is not the mechanism than a single small negative value
-would be.
+This is the strongest available argument for a recommendation we would otherwise
+have had to assert: \textbf{report the quantity, not the categorical verdict}. A
+threshold sitting inside the seed-to-seed spread carries no information. Note
+also that V5 is \emph{strengthened} here: an effect centred on zero with flipping
+sign is better evidence that mains is not the mechanism than one small negative
+value would be.
 
 Budget variation is smaller than seed variation: the 25-epoch V2 delta
 ($0.114$) lies inside the 40-epoch seed range $[0.091, 0.116]$. No verdict
@@ -275,11 +340,10 @@ thousands, and on structural findings that require no significance test.
 
 \subsection{Threshold calibration}
 The thresholds in Sec.~II ($\phi\geq0.15$, $\Delta_p\geq0.10$, $\pm0.02$ for V5,
-a half-width criterion for V4) are reasoned defaults, not calibrated ones. They
-are exposed as parameters. We recommend reporting the underlying quantity rather
-than the categorical verdict. Sec.~\ref{sec:sens} shows this is not a
-hypothetical concern: two of our five checks change label across seeds while
-every underlying quantity stays stable.
+a half-width criterion for V4) are reasoned defaults, not calibrated ones, and
+are exposed as parameters. Sec.~\ref{sec:sens} shows why the quantity, not the
+label, is what should be reported: two of five checks change label across seeds
+while every underlying quantity stays stable.
 
 % ======================================================================
 \section{Discussion}
@@ -290,11 +354,31 @@ fits. Against the cost of a replication study, or of a biomarker claim that does
 not hold, this is negligible.
 
 We make no claim about the biology of depression, and we do not claim
-that~\cite{anik2024} is methodologically unusual. The evaluation convention it
-follows is widespread, which is precisely why a mechanical check is worth
-having. Our own analysis produced six hypotheses that the data rejected; we
-regard that ratio as typical rather than exceptional, and as an argument for
-running the checks early.
+that~\cite{anik2024} is methodologically unusual. It is not. In a survey of 63
+deep-learning EEG studies published since 2018, spanning depression and five
+other clinical conditions, 61.9\% split training and test data at the segment
+level, a further 6.3\% did not state their split, and only 27.0\% split by
+subject~\cite{brookshire2024}. That epoch-level evaluation is the field's
+default, rather than an aberration, is precisely why a mechanical check is worth
+having: a reviewer cannot reasonably single out one paper for a practice most
+papers follow, but a protocol can be applied to all of them.
+
+The unit of evaluation matters independently of the split rule. Ke
+\emph{et al.}~\cite{ke2021} report $99\pm0.08\%$ on this dataset from counts
+consistent with a subject-disjoint partition --- but that is an epoch-level
+accuracy over 3{,}728 four-second segments from a single, non-rotated holdout of
+13 subjects, with no per-subject aggregation. A fixed 13-subject test set cannot
+express between-subject variability, whatever the $\pm0.08\%$ ranges over, so the
+number is not comparable to a subject-level accuracy over 63 subjects. Their
+stated reason for windowing --- ``overfitting would occur when performing
+classification based on subjects'' --- is candid, and representative of why the
+convention persists: at $N\approx60$ the subject is a scarce unit. Reporting
+$\Delta_p$ and subject-level accuracy does not solve that scarcity; it makes it
+visible.
+
+Our own analysis produced six hypotheses that the data
+rejected; we regard that ratio as typical rather than exceptional, and as an
+argument for running the checks early.
 
 \textbf{Limitations.} Single dataset; $N=63$; the mechanism behind the
 30--45\,Hz effect is unresolved, with residual EMG, the aperiodic difference,
@@ -309,17 +393,13 @@ located.
 
 Band-specific EEG classification claims can be checked for well-posedness before
 they are believed. Applied to a published 99.60\% result, four of five checks
-fail: a fifth of the nominal band was never recorded, the split rule accounts
-for nine accuracy points, a five-parameter signal-quality baseline matches an
-eleven-layer network, and a single uniform third of the band reproduces the
-full-band predictions. We reproduce $0.847\pm0.009$ subject-level accuracy. The protocol
-and all run records are released.
+fail, and we reproduce $0.847\pm0.009$ subject-level accuracy rather than
+$0.9960$. The failures are itemised in Table~\ref{tab:bandcheck}; each is cheap
+enough to have been run before the claim was made.
 
-\section*{Reproducibility}
-Code, configurations and a timestamped record of every run reported here ---
-including the command, git commit and package versions --- are available at
-\url{https://github.com/TODO/neuro-or-noise}. Table~\ref{tab:bandcheck} is
-produced by a single command.
+Code, configurations, and a per-run record of every result reported here ---
+command, git commit, package versions --- are released at
+\url{https://github.com/TODO/neuro-or-noise}.
 
 \balance
 \begin{thebibliography}{9}
@@ -354,9 +434,24 @@ T.~Donoghue \emph{et al.}, ``Parameterizing neural power spectra into periodic
 and aperiodic components,'' \emph{Nature Neurosci.}, vol.~23, pp.~1655--1665,
 2020.
 
-% TODO: add 3-5 further EEG-MDD papers that use epoch-level evaluation, to
-% support the claim that the convention is widespread rather than specific
-% to [1]. This citation set is load-bearing for the paper's framing.
+\bibitem{brookshire2024}
+G.~Brookshire \emph{et al.}, ``Data leakage in deep learning studies of
+translational EEG,'' \emph{Front. Neurosci.}, vol.~18, art.~1373515, 2024.
+
+\bibitem{saeb2017}
+S.~Saeb, L.~Lonini, A.~Jayaraman, D.~C. Mohr, and K.~P. Kording, ``The need to
+approximate the use-case in clinical machine learning,'' \emph{GigaScience},
+vol.~6, no.~5, art.~gix019, 2017.
+
+\bibitem{ke2021}
+H.~Ke, C.~Cai, F.~Wang, F.~Hu, J.~Tang, and Y.~Shi, ``Interpretation of
+frequency channel-based CNN on depression identification,''
+\emph{Front. Comput. Neurosci.}, vol.~15, art.~773147, 2021.
+
+\bibitem{kapoor2023}
+S.~Kapoor and A.~Narayanan, ``Leakage and the reproducibility crisis in
+machine-learning-based science,'' \emph{Patterns}, vol.~4, no.~9, art.~100804,
+2023.
 
 \end{thebibliography}
 
