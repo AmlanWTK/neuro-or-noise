@@ -1,0 +1,33 @@
+{
+  "name": "bandcheck",
+  "started": "2026-08-13T23:27:50",
+  "duration_s": 4382.7,
+  "argv": [
+    "experiments/bandcheck_run.py",
+    "--data",
+    "D:\\Project\\PaperPlan\\EEG",
+    "--band",
+    "gamma",
+    "--model",
+    "ex1dcnn",
+    "--header-lp",
+    "80",
+    "--weight-decay",
+    "0.02",
+    "--checks",
+    "V2"
+  ],
+  "args": {},
+  "git_commit": "88f1e7b",
+  "git_dirty": true,
+  "versions": {
+    "python": "3.14.4",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "numpy": "2.4.3",
+    "scipy": "1.17.1",
+    "sklearn": "1.9.0",
+    "torch": "2.11.0+cpu",
+    "mne": "1.12.1"
+  },
+  "status": "ok"
+}

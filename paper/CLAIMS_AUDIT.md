@@ -25,7 +25,7 @@ measurement. **WRONG**: measurement contradicts the text.
 |---|---|---|---|
 | B1 | 63 subjects (33 MDD, 30 HC), 119 recordings | loader output, every run | **VERIFIED** |
 | B2 | Duplicate file; one MDD subject task-only; 7 missing a condition | `inspect_data` + loader | **VERIFIED** |
-| B3 | λ=0.02 reduces the model to near chance: 0.514 epoch-random, 0.548 subject-wise, Δp=−0.034, against 0.947/0.856 at 1e-4 | `20260813-220728_bandcheck` | **VERIFIED** — claim narrowed, see below |
+| B3 | λ=0.02 reduces the model to near chance: 0.514 epoch-random, 0.548 subject-wise, Δp=−0.034, against 0.947/0.856 at 1e-4 | `...220728` **and** `...232750`, Δp identical | **VERIFIED** twice; claim narrowed, see below |
 | B4 | Headers identical across groups | `...104431_e2d` S1 | **VERIFIED** |
 | B5 | Hand-picked 30–45 Hz: 0.8413 both, p=1.00, r=0.979, 93.7% | compare_runs | `...225345_e2` vs `...215110_e2` | **VERIFIED** but at **max_epochs=25**, not 40 → *label it as such* |
 | B6 | 5 scalars reach 0.81–0.88 in every band, spread 0.070 | P3 artifact_lr, 7 bands | `...110230_e2` | **VERIFIED** |
@@ -233,7 +233,10 @@ authors, affiliation, and the public repo URL (three `TODO`s in
 
 ### B3 in detail — confirmed, but two clauses retracted
 
-`20260813-220728_bandcheck`, 3298 s. At λ=0.02 applied as decoupled weight decay:
+Two independent runs, `20260813-220728_bandcheck` (3298 s) and
+`20260813-232750_bandcheck` (4383 s), returned **Δp = −0.034 in both** — the
+collapse is deterministic, not one unlucky fit. At λ=0.02 applied as decoupled
+weight decay:
 
 | | epoch-random | subject-wise | Δp |
 |---|---|---|---|
@@ -269,12 +272,17 @@ the absolute accuracies: a model that has learned nothing has no protocol delta
 either."* Cheap to fix in the text, and it pre-empts a sharp reviewer — but it
 would have been embarrassing to have shipped without it.
 
-### Provenance caveat on this run
+### Provenance note
 
-The runlog flagged `[UNCOMMITTED CHANGES]` (commit 2ced156 + the uncommitted
-`--weight-decay` flag that made the run possible). The flag is now committed. A
-clean 55-minute re-run would remove the only dirty record in the set; worth
-doing before submission, since per-run provenance is what this paper advertises.
+Both λ runs carry `[UNCOMMITTED CHANGES]` — the first at commit 2ced156 (before
+the `--weight-decay` flag existed), the second at 88f1e7b (docs written after
+that commit were still unstaged). Neither is reproducible from its recorded
+commit alone.
+
+This matters less than it looks: **the two runs agree to three decimal places**,
+which is the property the clean commit was meant to establish. Record the flag
+honestly rather than chasing a third run. The code needed is `--weight-decay`,
+present from 88f1e7b onward.
 
 ## Venue facts — confirmed 13 Aug, not assumed
 

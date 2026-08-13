@@ -942,3 +942,12 @@ vacuous-pass point into the V2 definition (stated once, not twice), compressing
 the λ paragraph, dropping a redundant AUC figure in §V1, shrinking Fig. 1 to
 0.90 column width, tightening Fig. 2's caption, and cutting the Conclusion's
 restatement of the abstract. Back to 4 pages + references-only page 5.
+
+### λ = 0.02 replicated (13 Aug, second run)
+
+`20260813-232750_bandcheck`, 4383 s. **Δp = −0.034 — identical to
+`...220728` to three decimal places**, from an independent fit 73 minutes later.
+The collapse is deterministic given the seed, not an artefact of one training
+run. Both runs carry the `[UNCOMMITTED CHANGES]` flag (2ced156 and 88f1e7b
+respectively); the agreement between them is stronger evidence than either
+clean record would have been, so no third run.

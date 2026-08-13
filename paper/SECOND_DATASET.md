@@ -71,7 +71,45 @@ while you work on TDBRAIN.
 
 ---
 
-## MODMA — direct download links (verified 13 Aug)
+## DECISION (13 Aug): TDBRAIN. MODMA is dropped.
+
+Two independent reasons, one network and one scientific. The scientific one
+would have decided it on its own.
+
+**Network.** `reshare.ukdataservice.ac.uk` is unroutable from this ISP — a 16 kB
+file timed out after 300 s, so it is not a size or download-manager problem. The
+site responds normally from elsewhere, so it is a route-level block on the UK
+academic network. Reachability test from the same machine, same minute:
+
+| host | status | time |
+|---|---|---|
+| `reshare.ukdataservice.ac.uk` | **timeout** | >300 s |
+| `synapse.org` | 200 | 1.75 s |
+| `s3.amazonaws.com` | 200 | 1.79 s |
+| `kaggle.com` | 200 | 1.05 s |
+
+**Scientific, and decisive.** MODMA's acquisition filter settings for the
+128-channel resting data are **not documented** — checked in the Nature source
+paper and the official Lanzhou GitHub README, both NOT STATED; filters appear
+only for the 3-electrode set, and there as processing rather than acquisition.
+Without them **V1's header arm cannot run**, and V1 on a second cohort was the
+entire point of the exercise.
+
+TDBRAIN's 100 Hz acquisition low-pass *is* documented, which is exactly the
+contrast against HUSM's 80 Hz that makes V1 a real test rather than a foregone
+conclusion. It is also reachable. Go there.
+
+*Checked and rejected: OpenNeuro `ds002748`, "Resting state with closed eyes for
+patients with depression and healthy participants" (51 depressed, 21 controls).
+It surfaces in every search for this and it is **fMRI, not EEG** — BOLD, TR
+2.5 s. Do not chase it.*
+
+*On Kaggle: the licensing objection I raised first was weaker than I made it
+sound — the official deposit is CC BY 4.0, which permits redistribution with
+attribution. The technical objection was always the real one, and MODMA's
+missing filter metadata now makes the question moot.*
+
+## MODMA — direct download links (kept for the record; see decision above)
 
 The Lanzhou server needs an EULA and has been throwing 500s. **Use the UK Data
 Service copy instead** — deposited by Bin Hu (Lanzhou) himself, **CC BY 4.0**,
